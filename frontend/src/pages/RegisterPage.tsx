@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -6,16 +7,18 @@ import {
   TextField,
   Button,
   CircularProgress,
-  Alert
+  Alert,
+  Grid,
+  Link
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  // Form verilerini tutmak için state'ler
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,21 +26,21 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Form elemanlarına referanslar
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmPasswordRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const loginLinkRef = useRef<HTMLAnchorElement>(null);
 
-  // Klavye olaylarını yönetecek fonksiyon
-  const handleKeyDown = (e: React.KeyboardEvent, field: 'name' | 'email' | 'password' | 'confirm' | 'button') => {
+  const handleKeyDown = (e: React.KeyboardEvent, field: 'name' | 'email' | 'password' | 'confirm' | 'button' | 'link') => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (field === 'name') emailRef.current?.focus();
       if (field === 'email') passwordRef.current?.focus();
       if (field === 'password') confirmPasswordRef.current?.focus();
       if (field === 'confirm') buttonRef.current?.focus();
+      if (field === 'button') loginLinkRef.current?.focus();
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -45,25 +48,23 @@ const RegisterPage: React.FC = () => {
       if (field === 'password') emailRef.current?.focus();
       if (field === 'confirm') passwordRef.current?.focus();
       if (field === 'button') confirmPasswordRef.current?.focus();
+      if (field === 'link') buttonRef.current?.focus();
     }
   };
   
-  // Sayfa ilk yüklendiğinde sesli anons
   useEffect(() => {
-    speak('Kayıt sayfasına hoş geldiniz. Lütfen adınızı, e-posta adresinizi ve şifrenizi girerek hesabınızı oluşturun.');
+    speak('Kayıt sayfasına hoş geldiniz. Lütfen bilgilerinizi girerek hesabınızı oluşturun.');
   }, []);
 
-  // Form gönderildiğinde çalışacak fonksiyon
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
 
-    // Şifrelerin eşleşip eşleşmediğini kontrol et
     if (password !== confirmPassword) {
       const errorMessage = 'Şifreler eşleşmiyor. Lütfen kontrol edin.';
       setError(errorMessage);
       speak(errorMessage);
-      return; // Fonksiyonu durdur
+      return;
     }
     
     setLoading(true);
@@ -76,9 +77,9 @@ const RegisterPage: React.FC = () => {
       });
 
       setLoading(false);
-      speak('Kayıt başarılı. Ana sayfaya yönlendiriliyorsunuz.');
-      localStorage.setItem('token', response.data.token);
-      navigate('/'); // Kayıt başarılı olunca ana sayfaya yönlendir
+      speak('Kayıt başarılı. Giriş yapılıyor ve ana sayfaya yönlendiriliyorsunuz.');
+      login(response.data.token); // Merkezi login fonksiyonunu kullan
+      navigate('/');
 
     } catch (err: any) {
       setLoading(false);
@@ -90,14 +91,7 @@ const RegisterPage: React.FC = () => {
 
   return (
     <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
+      <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Typography component="h1" variant="h4" gutterBottom>
           Hesap Oluştur
         </Typography>
@@ -154,12 +148,7 @@ const RegisterPage: React.FC = () => {
             onKeyDown={(e) => handleKeyDown(e, 'confirm')}
           />
           {error && (
-            <Alert 
-              severity="error"
-              role="alert"
-              aria-live="assertive"
-              sx={{ mt: 2, width: '100%' }}
-            >
+            <Alert severity="error" role="alert" aria-live="assertive" sx={{ mt: 2, width: '100%' }}>
               {error}
             </Alert>
           )}
@@ -174,6 +163,19 @@ const RegisterPage: React.FC = () => {
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : 'Kayıt Ol'}
           </Button>
+          <Grid container justifyContent="flex-end">
+            <Grid>
+              <Link
+                component={RouterLink}
+                to="/login"
+                variant="body2"
+                ref={loginLinkRef}
+                onKeyDown={(e: React.KeyboardEvent<HTMLAnchorElement>) => handleKeyDown(e, 'link')}
+              >
+                Zaten bir hesabın var mı? Giriş Yap
+              </Link>
+            </Grid>
+          </Grid>
         </Box>
       </Box>
     </Container>

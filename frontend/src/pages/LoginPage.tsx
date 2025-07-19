@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -6,45 +7,47 @@ import {
   TextField,
   Button,
   CircularProgress,
-  Alert
+  Alert,
+  Grid,
+  Link 
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
+import axios from 'axios';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Form elemanlarına referanslar oluşturuyoruz
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const registerLinkRef = useRef<HTMLAnchorElement>(null);
 
-  // Klavye olaylarını yönetecek fonksiyon
-  const handleKeyDown = (e: React.KeyboardEvent, field: 'email' | 'password' | 'button') => {
+  const handleKeyDown = (e: React.KeyboardEvent, field: 'email' | 'password' | 'button' | 'link') => {
     if (e.key === 'ArrowDown') {
-      e.preventDefault(); // Sayfanın kaymasını engelle
+      e.preventDefault();
       if (field === 'email') passwordRef.current?.focus();
       if (field === 'password') buttonRef.current?.focus();
+      if (field === 'button') registerLinkRef.current?.focus();
     }
     if (e.key === 'ArrowUp') {
-      e.preventDefault(); // Sayfanın kaymasını engelle
+      e.preventDefault();
       if (field === 'password') emailRef.current?.focus();
       if (field === 'button') passwordRef.current?.focus();
+      if (field === 'link') buttonRef.current?.focus();
     }
   };
 
-  // Sayfa ilk yüklendiğinde kullanıcıyı sesli olarak karşıla
   useEffect(() => {
     speak('Giriş sayfasına hoş geldiniz. Lütfen e-posta ve şifrenizi girerek devam edin.');
-  }, []); // Boş dizi, bu etkinin sadece ilk render'da çalışmasını sağlar
+  }, []);
 
-  // Form gönderildiğinde çalışacak fonksiyon
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
@@ -58,7 +61,7 @@ const LoginPage: React.FC = () => {
       
       setLoading(false);
       speak('Giriş başarılı. Ana sayfaya yönlendiriliyorsunuz.');
-      localStorage.setItem('token', response.data.token);
+      login(response.data.token); // Merkezi login fonksiyonunu kullan
       navigate('/');
 
     } catch (err: any) {
@@ -71,14 +74,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
+      <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Typography component="h1" variant="h4" gutterBottom>
           Platforma Giriş
         </Typography>
@@ -110,12 +106,7 @@ const LoginPage: React.FC = () => {
             onKeyDown={(e) => handleKeyDown(e, 'password')}
           />
           {error && (
-            <Alert 
-              severity="error"
-              role="alert"
-              aria-live="assertive"
-              sx={{ mt: 2, width: '100%' }}
-            >
+            <Alert severity="error" role="alert" aria-live="assertive" sx={{ mt: 2, width: '100%' }}>
               {error}
             </Alert>
           )}
@@ -130,6 +121,19 @@ const LoginPage: React.FC = () => {
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : 'Giriş Yap'}
           </Button>
+          <Grid container justifyContent="flex-end">
+            <Grid>
+              <Link
+                component={RouterLink}
+                to="/register"
+                variant="body2"
+                ref={registerLinkRef}
+                onKeyDown={(e: React.KeyboardEvent<HTMLAnchorElement>) => handleKeyDown(e, 'link')}
+              >
+                Hesabın yok mu? Kayıt Ol
+              </Link>
+            </Grid>
+          </Grid>
         </Box>
       </Box>
     </Container>
