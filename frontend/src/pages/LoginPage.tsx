@@ -61,8 +61,14 @@ const LoginPage: React.FC = () => {
       
       setLoading(false);
       speak('Giriş başarılı. Ana sayfaya yönlendiriliyorsunuz.');
-      login(response.data.token); // Merkezi login fonksiyonunu kullan
-      navigate('/');
+      await login(response.data.token, response.data.user); // Merkezi login fonksiyonunu kullan
+      
+      // Check if user is admin and redirect accordingly
+      if (response.data.user && response.data.user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/');
+      }
 
     } catch (err: any) {
       setLoading(false);

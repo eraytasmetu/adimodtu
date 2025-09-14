@@ -5,7 +5,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: any; // Gerçekte buraya bir User arayüzü tanımlamak daha iyi olur
   loading: boolean;
-  login: (token: string) => void;
+  login: (token: string, userData?: any) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,11 +35,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadUser();
   }, []);
 
-  const login = (token: string) => {
+  const login = async (token: string, userData?: any) => {
     localStorage.setItem('authtoken', token);
     setIsAuthenticated(true);
     setLoading(false);
-    // Optionally, fetch user info here if needed
+    
+    // If user data is provided, set it directly
+    if (userData) {
+      setUser(userData);
+    } else {
+      // Otherwise, fetch user info from API
+      try {
+        const res = await api.get('/users/me');
+        setUser(res.data);
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+      }
+    }
   };
 
   const logout = () => {
