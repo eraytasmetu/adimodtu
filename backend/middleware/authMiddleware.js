@@ -4,7 +4,7 @@ const User = require('../models/user');
 
 module.exports = async function (req, res, next) {
   const token = req.header('authtoken');
-
+  console.log('token:', token);
   if (!token) {
     return res.status(401).json({ msg: 'Token bulunamadı, yetkilendirme reddedildi' });
   }

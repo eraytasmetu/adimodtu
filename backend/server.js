@@ -23,6 +23,9 @@ app.use('/api/topics', require('./routes/topics'));
 
 app.use('/api/tests', require('./routes/tests'));
 
+app.use('/api/speech', require('./routes/speech'));
+
+
 const PORT = process.env.PORT || 5757;
 
 app.listen(PORT, () => console.log(`Sunucu ${PORT} portunda başlatıldı`));

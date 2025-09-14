@@ -3,6 +3,25 @@ const Class = require('../models/Class');
 const Topic = require('../models/Topic');
 const Test = require('../models/Test');
 
+exports.getAllUnits = async (req, res) => {
+  try {
+    const units = await Unit.find().populate('class', 'name').sort({ createdAt: 'asc' });
+    
+    // Map the response to match frontend expectations
+    const unitsWithClassInfo = units.map(unit => ({
+      _id: unit._id,
+      name: unit.title,
+      class: unit.class._id,
+      className: unit.class.name
+    }));
+    
+    res.json(unitsWithClassInfo);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Sunucu Hatası');
+  }
+};
+
 exports.createUnit = async (req, res) => {
   const { title, class: classId } = req.body;
 

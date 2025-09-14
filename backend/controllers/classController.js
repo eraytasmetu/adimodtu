@@ -2,7 +2,7 @@ const Class = require('../models/Class');
 const Unit = require('../models/Unit');
 
 exports.createClass = async (req, res) => {
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   try {
     const existingClass = await Class.findOne({ name });
@@ -12,7 +12,6 @@ exports.createClass = async (req, res) => {
 
     const newClass = new Class({
       name,
-      description,
     });
 
     const savedClass = await newClass.save();
@@ -50,7 +49,7 @@ exports.getClassById = async (req, res) => {
 };
 
 exports.updateClass = async (req, res) => {
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   try {
     let classToUpdate = await Class.findById(req.params.id);
@@ -59,7 +58,6 @@ exports.updateClass = async (req, res) => {
     }
 
     classToUpdate.name = name || classToUpdate.name;
-    classToUpdate.description = description || classToUpdate.description;
 
     const updatedClass = await classToUpdate.save();
     res.json(updatedClass);
@@ -75,9 +73,8 @@ exports.deleteClass = async (req, res) => {
     if (!classToDelete) {
       return res.status(404).json({ msg: 'Sınıf bulunamadı' });
     }
-
-    await classToDelete.deleteOne();
     
+    await classToDelete.deleteOne();
     res.json({ msg: 'Sınıf başarıyla silindi' });
   } catch (err) {
     console.error(err.message);

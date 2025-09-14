@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authtoken');
       if (token) {
         axios.defaults.headers.common['authtoken'] = token;
         try {
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = (token: string) => {
-    localStorage.setItem('token', token);
+    localStorage.setItem('authtoken', token);
     axios.defaults.headers.common['authtoken'] = token;
     setIsAuthenticated(true);
     setLoading(false);
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('authtoken');
     delete axios.defaults.headers.common['authtoken'];
     setUser(null);
     setIsAuthenticated(false);

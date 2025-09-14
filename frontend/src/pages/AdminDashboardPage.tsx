@@ -1,30 +1,100 @@
 import React from 'react';
-import { Container, Typography, Button, Box } from '@mui/material';
+import { Container, Typography, Grid, Paper, Button, Box } from '@mui/material';
+import { School, Book, Topic, Quiz } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { speak } from '../utils/speechUtils';
 
 const AdminDashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    speak("Çıkış yapılıyor.");
     logout();
-  }
+    navigate('/login');
+  };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
-       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h4" component="h1">
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+      <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Typography 
+          variant="h2" 
+          component="h1"
+          sx={{ 
+            fontSize: '3rem',
+            fontWeight: 'bold',
+            mb: 3,
+            color: 'primary.main'
+          }}
+        >
           Admin Paneli
         </Typography>
-        <Button variant="contained" color="secondary" onClick={handleLogout}>
+        
+        <Button
+          variant="contained" 
+          color="primary" 
+          onClick={() => navigate('/dashboard')}
+          sx={{ 
+            fontSize: '1.5rem',
+            padding: '1rem 2rem',
+            minHeight: '60px',
+            mr: 2,
+          }}
+        >
+          Kullanıcı Paneli
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleLogout}
+          sx={{ 
+            fontSize: '1.5rem',
+            padding: '1rem 2rem',
+            minHeight: '60px',
+          }}
+        >
           Çıkış Yap
         </Button>
       </Box>
-      <Typography variant="h6">
-        Hoş geldin, {user?.name}! Buradan sınıfları, üniteleri ve diğer içerikleri yönetebilirsin.
-      </Typography>
-      {/* Buraya ileride admin'e özel bileşenler gelecek */}
+
+      <Grid container spacing={3}>
+        <Grid size={{xs: 12, md: 6}} >
+          <Paper sx={{ p: 4, textAlign: 'center', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <School sx={{ fontSize: 60, mb: 2, color: 'primary.main' }} />
+            <Typography variant="h5" gutterBottom>Sınıflar</Typography>
+            <Button variant="contained" onClick={() => navigate('/admin/classes')} sx={{ mt: 2 }}>
+              Yönet
+            </Button>
+          </Paper>
+        </Grid>
+        <Grid size={{xs: 12, md: 6}} >
+          <Paper sx={{ p: 4, textAlign: 'center', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Book sx={{ fontSize: 60, mb: 2, color: 'primary.main' }} />
+            <Typography variant="h5" gutterBottom>Üniteler</Typography>
+            <Button variant="contained" onClick={() => navigate('/admin/units')} sx={{ mt: 2 }}>
+              Yönet
+            </Button>
+          </Paper>
+        </Grid>
+        <Grid size={{xs: 12, md: 6}} >
+          <Paper sx={{ p: 4, textAlign: 'center', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Topic sx={{ fontSize: 60, mb: 2, color: 'primary.main' }} />
+            <Typography variant="h5" gutterBottom>Konular</Typography>
+            <Button variant="contained" onClick={() => navigate('/admin/topics')} sx={{ mt: 2 }}>
+              Yönet
+            </Button>
+          </Paper>
+        </Grid>
+        <Grid size={{xs: 12, md: 6}} >
+          <Paper sx={{ p: 4, textAlign: 'center', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Quiz sx={{ fontSize: 60, mb: 2, color: 'primary.main' }} />
+            <Typography variant="h5" gutterBottom>Testler</Typography>
+            <Button variant="contained" onClick={() => navigate('/admin/tests')} sx={{ mt: 2 }}>
+              Yönet
+            </Button>
+          </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 };

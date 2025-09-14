@@ -1,8 +1,39 @@
 const Topic = require('../models/Topic');
 const Unit = require('../models/Unit');
 
+exports.getAllTopics = async (req, res) => {
+  try {
+    const topics = await Topic.find()
+      .populate('unit', 'title')
+      .populate({
+        path: 'unit',
+        populate: { path: 'class', select: 'name' }
+      })
+      .sort({ createdAt: 'asc' });
+    
+    // Map the response to match frontend expectations
+    const topicsWithInfo = topics.map(topic => ({
+      _id: topic._id,
+      title: topic.title,
+      content: topic.content,
+      unit: topic.unit._id,
+      unitName: topic.unit.title,
+      className: topic.unit.class.name,
+      hasAudio: !!topic.audio,
+      audioSize: topic.audio?.size,
+      audioFilename: topic.audio?.filename
+    }));
+    
+    res.json(topicsWithInfo);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Sunucu Hatası');
+  }
+};
+
 exports.createTopic = async (req, res) => {
-  const { title, content, audioUrl, unit: unitId } = req.body;
+  const { title, content, unit: unitId } = req.body;
+  const audioFile = req.file;
 
   try {
     const parentUnit = await Unit.findById(unitId);
@@ -10,15 +41,36 @@ exports.createTopic = async (req, res) => {
       return res.status(404).json({ msg: 'İlgili ünite bulunamadı' });
     }
 
+    if (!audioFile) {
+      return res.status(400).json({ msg: 'Audio dosyası gerekli' });
+    }
+
     const newTopic = new Topic({
       title,
       content,
-      audioUrl,
+      audio: {
+        data: audioFile.buffer,
+        contentType: audioFile.mimetype,
+        filename: audioFile.originalname,
+        size: audioFile.size
+      },
       unit: unitId,
     });
 
     const savedTopic = await newTopic.save();
-    res.status(201).json(savedTopic);
+    
+    // Return topic without audio data to reduce response size
+    const topicResponse = {
+      _id: savedTopic._id,
+      title: savedTopic.title,
+      content: savedTopic.content,
+      unit: savedTopic.unit,
+      hasAudio: true,
+      audioSize: savedTopic.audio.size,
+      audioFilename: savedTopic.audio.filename
+    };
+    
+    res.status(201).json(topicResponse);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Sunucu Hatası');
@@ -31,7 +83,79 @@ exports.getTopicById = async (req, res) => {
     if (!topic) {
       return res.status(404).json({ msg: 'Konu bulunamadı' });
     }
-    res.json(topic);
+    
+    // Return topic without audio data
+    const topicResponse = {
+      _id: topic._id,
+      title: topic.title,
+      content: topic.content,
+      unit: topic.unit,
+      hasAudio: true,
+      audioSize: topic.audio.size,
+      audioFilename: topic.audio.filename
+    };
+    
+    res.json(topicResponse);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Sunucu Hatası');
+  }
+};
+
+exports.getTopicsByUnit = async (req, res) => {
+  console.log('getTopicsByUnit called with query:', req.query);
+  try {
+    const { unit } = req.query;
+    
+    if (!unit) {
+      console.log('No unit ID provided');
+      return res.status(400).json({ msg: 'Unit ID gerekli' });
+    }
+
+    console.log('Looking for topics with unit ID:', unit);
+    const topics = await Topic.find({ unit }).select('title content audio.size audio.filename');
+    console.log('Found topics:', topics.length);
+    
+    // Map the response to match frontend expectations
+    const topicsWithDescription = topics.map(topic => ({
+      _id: topic._id,
+      name: topic.title,
+      description: topic.content,
+      hasAudio: true,
+      audioSize: topic.audio.size,
+      audioFilename: topic.audio.filename
+    }));
+
+    console.log('Sending response:', topicsWithDescription);
+    res.json(topicsWithDescription);
+  } catch (err) {
+    console.error('Error in getTopicsByUnit:', err.message);
+    res.status(500).send('Sunucu Hatası');
+  }
+};
+
+// New endpoint to serve audio files
+exports.getTopicAudio = async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) {
+      return res.status(404).json({ msg: 'Konu bulunamadı' });
+    }
+
+    if (!topic.audio || !topic.audio.data) {
+      return res.status(404).json({ msg: 'Audio dosyası bulunamadı' });
+    }
+
+    // Set appropriate headers for audio streaming
+    res.set({
+      'Content-Type': topic.audio.contentType,
+      'Content-Length': topic.audio.size,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'public, max-age=31536000'
+    });
+
+    // Send audio data
+    res.send(topic.audio.data);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Sunucu Hatası');
@@ -39,19 +163,44 @@ exports.getTopicById = async (req, res) => {
 };
 
 exports.updateTopic = async (req, res) => {
-  const { title, content, audioUrl } = req.body;
+  const { title, content } = req.body;
+  const audioFile = req.file;
 
   try {
+    const updateData = { title, content };
+    
+    // If new audio file is provided, update audio data
+    if (audioFile) {
+      updateData.audio = {
+        data: audioFile.buffer,
+        contentType: audioFile.mimetype,
+        filename: audioFile.originalname,
+        size: audioFile.size
+      };
+    }
+
     const updatedTopic = await Topic.findByIdAndUpdate(
       req.params.id,
-      { title, content, audioUrl },
+      updateData,
       { new: true }
     );
 
     if (!updatedTopic) {
       return res.status(404).json({ msg: 'Konu bulunamadı' });
     }
-    res.json(updatedTopic);
+
+    // Return topic without audio data
+    const topicResponse = {
+      _id: updatedTopic._id,
+      title: updatedTopic.title,
+      content: updatedTopic.content,
+      unit: updatedTopic.unit,
+      hasAudio: true,
+      audioSize: updatedTopic.audio.size,
+      audioFilename: updatedTopic.audio.filename
+    };
+
+    res.json(topicResponse);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Sunucu Hatası');

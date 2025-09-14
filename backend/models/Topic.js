@@ -10,9 +10,23 @@ const TopicSchema = new Schema({
     type: String,
     required: true,
   },
-  audioUrl: {
-    type: String,
-    required: true,
+  audio: {
+    data: {
+      type: Buffer,
+      required: true,
+    },
+    contentType: {
+      type: String,
+      required: true,
+    },
+    filename: {
+      type: String,
+      required: true,
+    },
+    size: {
+      type: Number,
+      required: true,
+    }
   },
   unit: {
     type: Schema.Types.ObjectId,

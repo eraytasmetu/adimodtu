@@ -19,7 +19,6 @@ export const speak = (text: string, onEndCallback?: () => void) => {
   utterance.pitch = 1.1;  // Ton
   utterance.volume = 1;   // Ses seviyesi
 
-
   if (onEndCallback) utterance.onend = onEndCallback;
 
   if (voices.length > 0) {

@@ -7,9 +7,6 @@ const ClassSchema = new Schema({
     required: true,
     unique: true,
   },
-  description: {
-    type: String,
-  },
 }, {
   timestamps: true,
 });
