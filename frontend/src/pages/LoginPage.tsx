@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
-import axios from 'axios';
+import api from '../api/api';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -54,7 +54,7 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5757/api/users/login', {
+      const response = await api.post('/users/login', {
         email,
         password,
       });

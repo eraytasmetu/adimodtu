@@ -28,7 +28,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, ArrowBack, ExpandMore, AudioFile } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 
 interface ClassData {
   _id: string;
@@ -115,9 +115,9 @@ const AdminTestsPage: React.FC = () => {
     try {
       setLoading(true);
       const [classesRes, unitsRes, testsRes] = await Promise.all([
-        axios.get('http://localhost:5757/api/classes'),
-        axios.get('http://localhost:5757/api/units'),
-        axios.get('http://localhost:5757/api/tests')
+        api.get('/classes'),
+        api.get('/units'),
+        api.get('/tests')
       ]);
 
       console.log('Classes response:', classesRes?.data);
@@ -182,9 +182,9 @@ const AdminTestsPage: React.FC = () => {
       setUploadProgress(0);
 
       if (editingTest) {
-        await axios.put(`http://localhost:5757/api/tests/${editingTest._id}`, formData);
+        await api.put(`/tests/${editingTest._id}`, formData);
       } else {
-        await axios.post('http://localhost:5757/api/tests', formData);
+        await api.post('/tests', formData);
       }
 
       setOpenDialog(false);
@@ -230,7 +230,7 @@ const AdminTestsPage: React.FC = () => {
     
     if (window.confirm('Bu testi silmek istediğinizden emin misiniz?')) {
       try {
-        await axios.delete(`http://localhost:5757/api/tests/${id}`);
+        await api.delete(`/tests/${id}`);
         fetchData();
       } catch (err) {
         setError('Silme işlemi başarısız');

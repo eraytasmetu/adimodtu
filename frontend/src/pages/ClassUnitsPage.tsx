@@ -14,7 +14,7 @@ import {
   Link
 } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
@@ -58,11 +58,11 @@ const ClassUnitsPage: React.FC = () => {
     const fetchClassAndUnits = async () => {
       try {
         // Sınıf bilgilerini al
-        const classRes = await axios.get(`http://localhost:5757/api/classes/${classId}`);
+        const classRes = await api.get(`/classes/${classId}`);
         setClassData(classRes.data.class);
 
         // Üniteleri al
-        const unitsRes = await axios.get(`http://localhost:5757/api/units/for-class/${classId}`);
+        const unitsRes = await api.get(`/units/for-class/${classId}`);
         setUnits(unitsRes.data);
         
         // Initialize refs array

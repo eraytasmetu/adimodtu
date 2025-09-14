@@ -21,7 +21,7 @@ import {
   NavigateBefore
 } from '@mui/icons-material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
@@ -90,15 +90,15 @@ const TopicDetailPage: React.FC = () => {
     const fetchData = async () => {
       try {
         // Sınıf bilgilerini al
-        const classRes = await axios.get(`http://localhost:5757/api/classes/${classId}`);
+        const classRes = await api.get(`/classes/${classId}`);
         setClassData(classRes.data.class);
 
         // Ünite bilgilerini al
-        const unitRes = await axios.get(`http://localhost:5757/api/units/${unitId}`);
+        const unitRes = await api.get(`/units/${unitId}`);
         setUnitData(unitRes.data);
 
         // Konu bilgilerini al
-        const topicRes = await axios.get(`http://localhost:5757/api/topics/${topicId}`);
+        const topicRes = await api.get(`/topics/${topicId}`);
         setTopic(topicRes.data);
         
       } catch (err) {
@@ -141,7 +141,10 @@ const TopicDetailPage: React.FC = () => {
   useEffect(() => {
     if (topic?._id) {
       // Create audio URL from MongoDB endpoint
-      const audioUrl = `http://localhost:5757/api/topics/${topic._id}/audio`;
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://adimodtu.onrender.com/api' 
+        : 'http://localhost:5757/api';
+      const audioUrl = `${baseUrl}/topics/${topic._id}/audio`;
       setAudioUrls([audioUrl]);
       setCurrentAudioUrlIndex(0);
       
@@ -154,7 +157,10 @@ const TopicDetailPage: React.FC = () => {
 
   const generateAudioUrls = (topicId: string): string[] => {
     // For MongoDB, we only have one audio URL
-    return [`http://localhost:5757/api/topics/${topicId}/audio`];
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://adimodtu.onrender.com/api' 
+      : 'http://localhost:5757/api';
+    return [`${baseUrl}/topics/${topicId}/audio`];
   };
 
   // Audio event handlers
@@ -193,11 +199,8 @@ const TopicDetailPage: React.FC = () => {
     setIsAudioLoading(true);
     setAudioError('');
     try {
-      const response = await axios.get(url, { 
-        responseType: 'arraybuffer',
-        headers: {
-          'authtoken': localStorage.getItem('authtoken') || ''
-        }
+      const response = await api.get(url, { 
+        responseType: 'arraybuffer'
       });
       
       const blob = new Blob([response.data], { type: 'audio/mpeg' });

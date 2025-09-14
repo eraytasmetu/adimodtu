@@ -14,7 +14,7 @@ import {
   Link
 } from '@mui/material';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
@@ -61,15 +61,15 @@ const UserTestsPage: React.FC = () => {
     const fetchData = async () => {
       try {
         // Sınıf bilgilerini al
-        const classRes = await axios.get(`http://localhost:5757/api/classes/${classId}`);
+        const classRes = await api.get(`/classes/${classId}`);
         setClassData(classRes.data.class);
 
         // Ünite bilgilerini al
-        const unitRes = await axios.get(`http://localhost:5757/api/units/${unitId}`);
+        const unitRes = await api.get(`/units/${unitId}`);
         setUnitData(unitRes.data);
 
         // Testleri al
-        const testsRes = await axios.get(`http://localhost:5757/api/tests?unit=${unitId}`);
+        const testsRes = await api.get(`/tests?unit=${unitId}`);
         setTests(testsRes.data);
         
         // Initialize refs array

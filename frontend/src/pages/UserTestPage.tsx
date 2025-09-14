@@ -23,7 +23,7 @@ import {
   Cancel
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
@@ -147,7 +147,7 @@ const UserTestPage: React.FC = () => {
   const fetchTest = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5757/api/tests/${testId}`);
+      const response = await api.get(`/tests/${testId}`);
       setTest(response.data);
     } catch (err: any) {
       setError('Test yüklenirken hata oluştu');
@@ -182,12 +182,8 @@ const UserTestPage: React.FC = () => {
       audioRequestAbortController.current = abortController;
       
       // Fetch audio with authentication token
-      const token = localStorage.getItem('authtoken');
-      const response = await axios.get(url, {
+      const response = await api.get(url, {
         responseType: 'blob',
-        headers: {
-          'authtoken': token
-        },
         signal: abortController.signal
       });
       
@@ -276,7 +272,10 @@ const UserTestPage: React.FC = () => {
   const playQuestionAudio = () => {
     if (!test) return;
     const currentQuestion = test.questions[currentQuestionIndex];
-    const audioUrl = `http://localhost:5757/api/tests/${testId}/questions/${currentQuestion._id}/audio/question`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://adimodtu.onrender.com/api' 
+      : 'http://localhost:5757/api';
+    const audioUrl = `${baseUrl}/tests/${testId}/questions/${currentQuestion._id}/audio/question`;
     playAudio(audioUrl, 'question');
   };
 
@@ -284,14 +283,20 @@ const UserTestPage: React.FC = () => {
     if (!test) return;
     const currentQuestion = test.questions[currentQuestionIndex];
     const option = currentQuestion.options[optionIndex];
-    const audioUrl = `http://localhost:5757/api/tests/${testId}/questions/${currentQuestion._id}/options/${option._id}/audio`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://adimodtu.onrender.com/api' 
+      : 'http://localhost:5757/api';
+    const audioUrl = `${baseUrl}/tests/${testId}/questions/${currentQuestion._id}/options/${option._id}/audio`;
     playAudio(audioUrl, `option-${optionIndex}`);
   };
 
   const playSolutionAudio = () => {
     if (!test) return;
     const currentQuestion = test.questions[currentQuestionIndex];
-    const audioUrl = `http://localhost:5757/api/tests/${testId}/questions/${currentQuestion._id}/audio/solution`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://adimodtu.onrender.com/api' 
+      : 'http://localhost:5757/api';
+    const audioUrl = `${baseUrl}/tests/${testId}/questions/${currentQuestion._id}/audio/solution`;
     playAudio(audioUrl, 'solution');
   };
 
@@ -433,8 +438,8 @@ const UserTestPage: React.FC = () => {
     
     try {
       const currentQuestion = test.questions[currentQuestionIndex];
-      const response = await axios.post(
-        `http://localhost:5757/api/tests/${testId}/questions/${currentQuestion._id}/check`,
+      const response = await api.post(
+        `/tests/${testId}/questions/${currentQuestion._id}/check`,
         { userAnswer: selectedAnswer }
       );
       

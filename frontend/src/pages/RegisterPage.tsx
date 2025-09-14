@@ -11,7 +11,7 @@ import {
   Grid,
   Link
 } from '@mui/material';
-import axios from 'axios';
+import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
@@ -70,7 +70,7 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5757/api/users/register', {
+      const response = await api.post('/users/register', {
         name,
         email,
         password,

@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, Grid, Paper, TextField, Button, List, ListItem, ListItemText, IconButton, Divider, Alert, Stack, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { Add, Edit, Delete, NavigateNext } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface ClassData { _id: string; name: string; }
 interface UnitData { _id: string; title: string; class: string; }
-
-const API = 'http://localhost:5757/api';
 
 const AdminUnitsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,8 +19,8 @@ const AdminUnitsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const loadClasses = async () => { try { const res = await axios.get(`${API}/classes`); setClasses(res.data); } catch { setError('Sınıflar yüklenemedi'); } };
-  const loadUnits = async () => { if (!selectedClassId) return setUnits([]); try { const res = await axios.get(`${API}/units/for-class/${selectedClassId}`); setUnits(res.data); } catch { setError('Üniteler yüklenemedi'); } };
+  const loadClasses = async () => { try { const res = await api.get('/classes'); setClasses(res.data); } catch { setError('Sınıflar yüklenemedi'); } };
+  const loadUnits = async () => { if (!selectedClassId) return setUnits([]); try { const res = await api.get(`/units/for-class/${selectedClassId}`); setUnits(res.data); } catch { setError('Üniteler yüklenemedi'); } };
 
   useEffect(() => { loadClasses(); }, []);
   useEffect(() => { loadUnits(); }, [selectedClassId]);
@@ -31,14 +29,14 @@ const AdminUnitsPage: React.FC = () => {
     if (!selectedClassId) return setError('Önce sınıf seçin');
     setError('');
     try {
-      if (editingId) { await axios.put(`${API}/units/${editingId}`, { title: form.title }); }
-      else { await axios.post(`${API}/units`, { title: form.title, class: selectedClassId }); }
+      if (editingId) { await api.put(`/units/${editingId}`, { title: form.title }); }
+      else { await api.post('/units', { title: form.title, class: selectedClassId }); }
       setForm({ title: '' }); setEditingId(null); await loadUnits();
     } catch (e: any) { setError(e?.response?.data?.msg || 'Kayıt işlemi başarısız'); }
   };
 
   const startEdit = (u: UnitData) => { setEditingId(u._id); setForm({ title: u.title }); };
-  const remove = async (id: string) => { setError(''); try { await axios.delete(`${API}/units/${id}`); await loadUnits(); } catch (e: any) { setError(e?.response?.data?.msg || 'Silme işlemi başarısız'); } };
+  const remove = async (id: string) => { setError(''); try { await api.delete(`/units/${id}`); await loadUnits(); } catch (e: any) { setError(e?.response?.data?.msg || 'Silme işlemi başarısız'); } };
 
   const goClasses = () => navigate('/admin/classes');
   const goTopics = (unitId?: string) => {

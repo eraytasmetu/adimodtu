@@ -12,7 +12,7 @@ import {
   Button
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
 
@@ -51,7 +51,7 @@ const UserDashboardPage: React.FC = () => {
     // Backend'den sınıfları çek
     const fetchClasses = async () => {
       try {
-        const res = await axios.get('http://localhost:5757/api/classes');
+        const res = await api.get('/classes');
         setClasses(res.data);
         // Initialize refs array
         classRefs.current = new Array(res.data.length).fill(null);

@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, Grid, Paper, TextField, Button, List, ListItem, ListItemText, IconButton, Divider, Alert, Stack } from '@mui/material';
 import { Add, Edit, Delete, NavigateNext } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface ClassData { _id: string; name: string; }
-
-const API = 'http://localhost:5757/api';
 
 const AdminClassesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +18,7 @@ const AdminClassesPage: React.FC = () => {
 
   const loadClasses = async () => {
     try {
-      const res = await axios.get(`${API}/classes`);
+      const res = await api.get('/classes');
       setClasses(res.data);
     } catch {
       setError('Sınıflar yüklenemedi');
@@ -33,9 +31,9 @@ const AdminClassesPage: React.FC = () => {
     setError('');
     try {
       if (editingId) {
-        await axios.put(`${API}/classes/${editingId}`, { name: form.name });
+        await api.put(`/classes/${editingId}`, { name: form.name });
       } else {
-        await axios.post(`${API}/classes`, { name: form.name });
+        await api.post('/classes', { name: form.name });
       }
       setForm({ name: '' });
       setEditingId(null);
@@ -53,7 +51,7 @@ const AdminClassesPage: React.FC = () => {
   const remove = async (id: string) => {
     setError('');
     try {
-      await axios.delete(`${API}/classes/${id}`);
+      await api.delete(`/classes/${id}`);
       await loadClasses();
     } catch (e: any) {
       setError(e?.response?.data?.msg || 'Silme işlemi başarısız');

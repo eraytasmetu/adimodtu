@@ -24,7 +24,7 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, ArrowBack, AdminPanelSettings } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 
 interface ClassData {
   _id: string;
@@ -84,9 +84,9 @@ const AdminTopicsPage: React.FC = () => {
     try {
       setLoading(true);
       const [classesRes, unitsRes, topicsRes] = await Promise.all([
-        axios.get('http://localhost:5757/api/classes'),
-        axios.get('http://localhost:5757/api/units'),
-        axios.get('http://localhost:5757/api/topics')
+        api.get('/classes'),
+        api.get('/units'),
+        api.get('/topics')
       ]);
 
       setClasses(classesRes.data);
@@ -127,7 +127,7 @@ const AdminTopicsPage: React.FC = () => {
       }
 
       if (editingTopic) {
-        await axios.put(`http://localhost:5757/api/topics/${editingTopic._id}`, formDataToSend, {
+        await api.put(`/topics/${editingTopic._id}`, formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
@@ -137,7 +137,7 @@ const AdminTopicsPage: React.FC = () => {
           }
         });
       } else {
-        await axios.post('http://localhost:5757/api/topics', formDataToSend, {
+        await api.post('/topics', formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
@@ -173,7 +173,7 @@ const AdminTopicsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Bu konuyu silmek istediğinizden emin misiniz?')) {
       try {
-        await axios.delete(`http://localhost:5757/api/topics/${id}`);
+        await api.delete(`/topics/${id}`);
         fetchData();
       } catch (err) {
         setError('Silme işlemi başarısız');

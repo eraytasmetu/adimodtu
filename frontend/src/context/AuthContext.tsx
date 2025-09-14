@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import api from '../api/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -20,13 +20,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const loadUser = async () => {
       const token = localStorage.getItem('authtoken');
       if (token) {
-        axios.defaults.headers.common['authtoken'] = token;
         try {
-          const res = await axios.get('http://localhost:5757/api/users/me');
+          const res = await api.get('/users/me');
           setUser(res.data);
           setIsAuthenticated(true);
         } catch (err) {
-          localStorage.removeItem('token');
+          localStorage.removeItem('authtoken');
           setIsAuthenticated(false);
         }
       }
@@ -38,7 +37,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (token: string) => {
     localStorage.setItem('authtoken', token);
-    axios.defaults.headers.common['authtoken'] = token;
     setIsAuthenticated(true);
     setLoading(false);
     // Optionally, fetch user info here if needed
@@ -46,7 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('authtoken');
-    delete axios.defaults.headers.common['authtoken'];
     setUser(null);
     setIsAuthenticated(false);
   };
