@@ -66,7 +66,7 @@ const UserTestsPage: React.FC = () => {
 
         // Ünite bilgilerini al
         const unitRes = await api.get(`/units/${unitId}`);
-        setUnitData(unitRes.data);
+        setUnitData(unitRes.data.unit);
 
         // Testleri al
         const testsRes = await api.get(`/tests?unit=${unitId}`);
