@@ -1,6 +1,6 @@
 const Test = require('../models/Test');
 const Unit = require('../models/Unit');
-const User = require('../models/user');
+const User = require('../models/User');
 
 exports.getAllTests = async (req, res) => {
   try {

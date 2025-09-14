@@ -37,7 +37,7 @@ interface ClassData {
 // Ünite verisi için tip arayüzü
 interface UnitData {
   _id: string;
-  name: string;
+  title: string;
 }
 
 const UserTopicsPage: React.FC = () => {
@@ -68,8 +68,7 @@ const UserTopicsPage: React.FC = () => {
 
         // Ünite bilgilerini al
         const unitRes = await axios.get(`http://localhost:5757/api/units/${unitId}`);
-        setUnitData(unitRes.data);
-
+        setUnitData(unitRes.data.unit);
         // Konuları al
         const topicsRes = await axios.get(`http://localhost:5757/api/topics?unit=${unitId}`);
         setTopics(topicsRes.data);
@@ -89,7 +88,7 @@ const UserTopicsPage: React.FC = () => {
 
   useEffect(() => {
     if (classData && unitData && user && classId && unitId) {
-      speak(`${classData.name} - ${unitData.name} konuları yükleniyor. Lütfen bir konu seçerek başla.`, () => {
+      speak(`${classData.name} - ${unitData.title} konuları yükleniyor. Lütfen bir konu seçerek başla.`, () => {
         setIntroSpeechFinished(true);
       });
     } else if (!user) {
@@ -128,7 +127,7 @@ const UserTopicsPage: React.FC = () => {
         speak('Geri dön butonu');
       } else if (nextIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.name} konuları başlığı`);
+        speak(`${classData?.name} - ${unitData?.title} konuları başlığı`);
       } else {
         const topicIndex = nextIndex - 2;
         topicRefs.current[topicIndex]?.focus();
@@ -147,7 +146,7 @@ const UserTopicsPage: React.FC = () => {
         speak('Geri dön butonu');
       } else if (prevIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.name} konuları başlığı`);
+        speak(`${classData?.name} - ${unitData?.title} konuları başlığı`);
       } else {
         const topicIndex = prevIndex - 2;
         topicRefs.current[topicIndex]?.focus();
@@ -172,7 +171,6 @@ const UserTopicsPage: React.FC = () => {
   };
 
   const handleTopicClick = (topic: TopicData) => {
-    speak(`${topic.name} konusu seçildi`);
     navigate(`/topic/${classId}/${unitId}/${topic._id}`);
   };
 
@@ -232,7 +230,7 @@ const UserTopicsPage: React.FC = () => {
           {classData?.name}
         </Link>
         <Typography color="text.primary" sx={{ fontSize: '1.2rem' }}>
-          {unitData?.name}
+          {unitData?.title}
         </Typography>
         <Typography color="text.primary" sx={{ fontSize: '1.2rem' }}>
           Konular
@@ -256,9 +254,9 @@ const UserTopicsPage: React.FC = () => {
               borderRadius: '8px'
             }
           }}
-          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.name} konuları başlığı`)}
+          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.title} konuları başlığı`)}
         >
-          {classData?.name} - {unitData?.name} Konuları
+          {classData?.name} - {unitData?.title} Konuları
         </Typography>
         <Button 
           variant="contained" 

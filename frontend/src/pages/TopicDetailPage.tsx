@@ -28,11 +28,15 @@ import { speak } from '../utils/speechUtils';
 // Veri tipleri
 interface TopicData {
   _id: string;
-  name: string;
-  description?: string;
-  hasAudio: boolean;
-  audioSize?: number;
-  audioFilename?: string;
+  title: string;
+  content: string;
+  audio: {
+    data: Buffer;
+    contentType: string;
+    filename: string;
+    size: number;
+  };
+  unit: string;
 }
 
 interface ClassData {
@@ -42,7 +46,7 @@ interface ClassData {
 
 interface UnitData {
   _id: string;
-  name: string;
+  title: string;
 }
 
 const TopicDetailPage: React.FC = () => {
@@ -99,7 +103,6 @@ const TopicDetailPage: React.FC = () => {
         
       } catch (err) {
         setError('Konu yüklenirken bir hata oluştu.');
-        speak('Konu yüklenirken bir hata oluştu.');
       } finally {
         setLoading(false);
       }
@@ -110,9 +113,7 @@ const TopicDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (classData && unitData && topic && user && classId && unitId && topicId) {
-      speak(`${classData.name} - ${unitData.name} - ${topic.name} konusu yükleniyor. Audio kontrolleri için yön tuşlarını kullanın.`, () => {
-        setIntroSpeechFinished(true);
-      });
+      setIntroSpeechFinished(true);
     } else if (!user) {
       setIntroSpeechFinished(true);
     }
@@ -161,10 +162,8 @@ const TopicDetailPage: React.FC = () => {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
-        speak('Audio duraklatıldı');
       } else {
         audioRef.current.play();
-        speak('Audio oynatılıyor');
       }
       setIsPlaying(!isPlaying);
     }
@@ -173,14 +172,12 @@ const TopicDetailPage: React.FC = () => {
   const handleRewind = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
-      speak('10 saniye geri sarıldı');
     }
   };
 
   const handleForward = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 10);
-      speak('10 saniye ileri sarıldı');
     }
   };
 
@@ -189,7 +186,6 @@ const TopicDetailPage: React.FC = () => {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
       setIsPlaying(true);
-      speak('Audio baştan başlatıldı');
     }
   };
 
@@ -223,20 +219,17 @@ const TopicDetailPage: React.FC = () => {
         
         audioRef.current.onended = () => {
           setIsPlaying(false);
-          speak('Audio tamamlandı');
         };
         
         audioRef.current.onerror = () => {
           setAudioError('Audio yüklenirken hata oluştu');
           setIsAudioLoading(false);
-          speak('Audio yüklenirken hata oluştu');
         };
       }
     } catch (err) {
       console.error('Error loading audio from MongoDB:', err);
       setAudioError('Audio yüklenemedi. MongoDB hatası.');
       setIsAudioLoading(false);
-      speak('Audio yüklenemedi. MongoDB hatası.');
     }
   };
 
@@ -278,14 +271,12 @@ const TopicDetailPage: React.FC = () => {
         const nextIndex = Math.min(focusedIndex + 1, buttonRefs.current.length - 1);
         setFocusedIndex(nextIndex);
         buttonRefs.current[nextIndex]?.focus();
-        speakButtonName(nextIndex);
         break;
       case 'ArrowUp':
         e.preventDefault();
         const prevIndex = Math.max(focusedIndex - 1, 0);
         setFocusedIndex(prevIndex);
         buttonRefs.current[prevIndex]?.focus();
-        speakButtonName(prevIndex);
         break;
       case 'Enter':
         e.preventDefault();
@@ -294,10 +285,7 @@ const TopicDetailPage: React.FC = () => {
     }
   };
 
-  const speakButtonName = (index: number) => {
-    const buttonNames = ['Geri dön butonu', 'Oynat/Duraklat butonu', 'Geri sar butonu', 'İleri sar butonu', 'Yeniden başlat butonu'];
-    speak(buttonNames[index]);
-  };
+  
 
   const handleButtonAction = (index: number) => {
     switch (index) {
@@ -320,7 +308,6 @@ const TopicDetailPage: React.FC = () => {
   };
 
   const handleBackClick = () => {
-    speak("Konular sayfasına geri dönülüyor.");
     navigate(`/topics/${classId}/${unitId}`);
   };
 
@@ -417,10 +404,10 @@ const TopicDetailPage: React.FC = () => {
             }
           }}
         >
-          {unitData?.name}
+          {unitData?.title}
         </Link>
         <Typography color="text.primary" sx={{ fontSize: '1.2rem' }}>
-          {topic.name}
+          {topic.title}
         </Typography>
       </Breadcrumbs>
 
@@ -441,9 +428,8 @@ const TopicDetailPage: React.FC = () => {
               borderRadius: '8px'
             }
           }}
-          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.name} - ${topic.name} konusu başlığı`)}
         >
-          {classData?.name} - {unitData?.name} - {topic.name}
+          {classData?.name} - {unitData?.title} - {topic.title}
         </Typography>
         <Button 
           variant="contained" 
@@ -460,30 +446,11 @@ const TopicDetailPage: React.FC = () => {
               outlineOffset: '5px'
             }
           }}
-          onMouseEnter={() => speak('Geri dön butonu')}
         >
           <NavigateBefore sx={{ mr: 1 }} />
           Geri Dön
         </Button>
       </Box>
-
-      {/* Topic Description */}
-      {topic.description && (
-        <Card sx={{ mb: 4, p: 3 }}>
-          <CardContent>
-            <Typography 
-              variant="h5" 
-              sx={{ 
-                fontSize: '1.5rem',
-                lineHeight: 1.6,
-                mb: 2
-              }}
-            >
-              {topic.description}
-            </Typography>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Audio Player */}
       <Card sx={{ p: 4, mb: 4 }}>
@@ -545,9 +512,9 @@ const TopicDetailPage: React.FC = () => {
               <Typography variant="h6" sx={{ fontSize: '1.3rem', mb: 1 }}>
                 {formatTime(currentTime)} / {formatTime(duration)}
               </Typography>
-              {topic?.audioSize && (
+              {topic?.audio?.size && (
                 <Typography variant="body2" color="text.secondary">
-                  Dosya boyutu: {(topic.audioSize / (1024 * 1024)).toFixed(2)} MB
+                  Dosya boyutu: {(topic.audio.size / (1024 * 1024)).toFixed(2)} MB
                 </Typography>
               )}
             </Box>
@@ -572,7 +539,6 @@ const TopicDetailPage: React.FC = () => {
                     outlineOffset: '5px'
                   }
                 }}
-                onMouseEnter={() => speak('Geri sar butonu - 10 saniye geri sarar')}
                 tabIndex={0}
               >
                 <FastRewind sx={{ mr: 1, fontSize: '2rem' }} />
@@ -598,7 +564,6 @@ const TopicDetailPage: React.FC = () => {
                     outlineOffset: '5px'
                   }
                 }}
-                onMouseEnter={() => speak(isPlaying ? 'Duraklat butonu' : 'Oynat butonu')}
                 tabIndex={0}
               >
                 {isPlaying ? (
@@ -632,7 +597,6 @@ const TopicDetailPage: React.FC = () => {
                     outlineOffset: '5px'
                   }
                 }}
-                onMouseEnter={() => speak('İleri sar butonu - 10 saniye ileri sarar')}
                 tabIndex={0}
               >
                 <FastForward sx={{ mr: 1, fontSize: '2rem' }} />
@@ -658,7 +622,6 @@ const TopicDetailPage: React.FC = () => {
                     outlineOffset: '5px'
                   }
                 }}
-                onMouseEnter={() => speak('Yeniden başlat butonu - baştan başlatır')}
                 tabIndex={0}
               >
                 <RestartAlt sx={{ mr: 1, fontSize: '2rem' }} />
@@ -666,20 +629,6 @@ const TopicDetailPage: React.FC = () => {
               </Button>
             </Grid>
           </Grid>
-
-          {/* MongoDB Audio Info */}
-          {topic?.hasAudio && (
-            <Box sx={{ textAlign: 'center', mt: 4, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
-              <Typography variant="body2" sx={{ fontSize: '1rem', color: 'success.contrastText', mb: 1 }}>
-                ✅ Audio MongoDB'de saklanıyor. Daha güvenilir ve hızlı erişim.
-              </Typography>
-              {topic.audioFilename && (
-                <Typography variant="body2" sx={{ fontSize: '0.9rem', color: 'success.contrastText' }}>
-                  Dosya: {topic.audioFilename}
-                </Typography>
-              )}
-            </Box>
-          )}
 
           {/* Keyboard Shortcuts Info */}
           <Box sx={{ textAlign: 'center', mt: 4 }}>
@@ -689,6 +638,36 @@ const TopicDetailPage: React.FC = () => {
           </Box>
         </CardContent>
       </Card>
+
+      {/* Topic Content */}
+      {topic.content && (
+        <Card sx={{ mb: 4, p: 3 }}>
+          <CardContent>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                fontSize: '1.2rem',
+                fontWeight: 'bold',
+                mb: 2,
+                color: 'primary.main'
+              }}
+            >
+              Konu İçeriği:
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                fontSize: '1.1rem',
+                lineHeight: 1.8,
+                whiteSpace: 'pre-wrap',
+                textAlign: 'justify'
+              }}
+            >
+              {topic.content}
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
     </Container>
   );
 };

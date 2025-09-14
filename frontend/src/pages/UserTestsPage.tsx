@@ -35,7 +35,7 @@ interface ClassData {
 // Ünite verisi için tip arayüzü
 interface UnitData {
   _id: string;
-  name: string;
+  title: string;
 }
 
 const UserTestsPage: React.FC = () => {
@@ -87,7 +87,7 @@ const UserTestsPage: React.FC = () => {
 
   useEffect(() => {
     if (classData && unitData && user && classId && unitId) {
-      speak(`${classData.name} - ${unitData.name} testleri yükleniyor. Lütfen bir test seçerek başla.`, () => {
+      speak(`${classData.name} - ${unitData.title} testleri yükleniyor. Lütfen bir test seçerek başla.`, () => {
         setIntroSpeechFinished(true);
       });
     } else if (!user) {
@@ -126,7 +126,7 @@ const UserTestsPage: React.FC = () => {
         speak('Geri dön butonu');
       } else if (nextIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.name} testleri başlığı`);
+        speak(`${classData?.name} - ${unitData?.title} testleri başlığı`);
       } else {
         const testIndex = nextIndex - 2;
         testRefs.current[testIndex]?.focus();
@@ -145,7 +145,7 @@ const UserTestsPage: React.FC = () => {
         speak('Geri dön butonu');
       } else if (prevIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.name} testleri başlığı`);
+        speak(`${classData?.name} - ${unitData?.title} testleri başlığı`);
       } else {
         const testIndex = prevIndex - 2;
         testRefs.current[testIndex]?.focus();
@@ -230,7 +230,7 @@ const UserTestsPage: React.FC = () => {
           {classData?.name}
         </Link>
         <Typography color="text.primary" sx={{ fontSize: '1.2rem' }}>
-          {unitData?.name}
+          {unitData?.title}
         </Typography>
         <Typography color="text.primary" sx={{ fontSize: '1.2rem' }}>
           Testler
@@ -254,9 +254,9 @@ const UserTestsPage: React.FC = () => {
               borderRadius: '8px'
             }
           }}
-          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.name} testleri başlığı`)}
+          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.title} testleri başlığı`)}
         >
-          {classData?.name} - {unitData?.name} Testleri
+          {classData?.name} - {unitData?.title} Testleri
         </Typography>
         <Button 
           variant="contained" 

@@ -25,6 +25,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { speak } from '../utils/speechUtils';
 
 interface QuestionOption {
   _id: string;
@@ -85,7 +86,7 @@ const UserTestPage: React.FC = () => {
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
+  const [focusedOptionIndex, setFocusedOptionIndex] = useState(-1); // -1 to focus question first
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentAudioType, setCurrentAudioType] = useState<string>('');
   const [showSolution, setShowSolution] = useState(false);
@@ -95,6 +96,9 @@ const UserTestPage: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const questionRef = useRef<HTMLDivElement>(null);
+  const questionTextRef = useRef<HTMLHeadingElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const solutionButtonRef = useRef<HTMLButtonElement | null>(null); // Ref for the solution button
   const audioRequestAbortController = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -122,20 +126,21 @@ const UserTestPage: React.FC = () => {
       if (savedAnswer) {
         setSelectedAnswer(savedAnswer);
         const optionIndex = currentQuestion.options.findIndex(opt => opt.text === savedAnswer);
-        setFocusedOptionIndex(optionIndex >= 0 ? optionIndex : 0);
+        setFocusedOptionIndex(optionIndex >= 0 ? optionIndex : -1);
       } else {
         setSelectedAnswer('');
-        setFocusedOptionIndex(0);
+        setFocusedOptionIndex(-1); // Start with question focused
       }
       setAnswerResult(null);
       setShowSolution(false);
       
-      // Auto-play question audio when question loads
+      // Auto-play question audio when question loads and focus the question
       if (currentQuestion.hasQuestionAudio) {
         setTimeout(() => {
           playQuestionAudio();
         }, 500);
       }
+      questionTextRef.current?.focus();
     }
   }, [currentQuestionIndex, test]);
 
@@ -202,23 +207,13 @@ const UserTestPage: React.FC = () => {
       let hasStartedPlaying = false;
       let hasErrored = false;
       
-      audio.onloadstart = () => {
-        console.log('Audio loading started');
-      };
-      
-      audio.oncanplay = () => {
-        console.log('Audio can play');
-      };
-      
       audio.onplay = () => {
-        console.log('Audio started playing');
         hasStartedPlaying = true;
         setIsPlayingAudio(true);
         setIsLoadingAudio(false);
       };
       
       audio.onended = () => {
-        console.log('Audio ended');
         setIsPlayingAudio(false);
         setCurrentAudioType('');
         setIsLoadingAudio(false);
@@ -227,7 +222,6 @@ const UserTestPage: React.FC = () => {
       };
       
       audio.onerror = (e) => {
-        console.error('Audio playback error:', e);
         hasErrored = true;
         setIsPlayingAudio(false);
         setCurrentAudioType('');
@@ -260,7 +254,6 @@ const UserTestPage: React.FC = () => {
       try {
         await audio.play();
       } catch (playError) {
-        console.error('Play error:', playError);
         // Error handled silently - no text-to-speech
         throw playError;
       }
@@ -275,7 +268,6 @@ const UserTestPage: React.FC = () => {
       setCurrentAudioType('');
       setIsLoadingAudio(false);
       audioRequestAbortController.current = null;
-      console.error('Audio error:', err);
       
       // Error handled silently - no text-to-speech
     }
@@ -327,28 +319,54 @@ const UserTestPage: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!test) return;
     
+    // Disable keyboard navigation while audio is playing
+    if (isPlayingAudio || isLoadingAudio) {
+      // Only allow space to stop audio and escape to exit
+      if (e.key === ' ' && isPlayingAudio) {
+        e.preventDefault();
+        stopAudio();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        navigate(-1);
+      }
+      return;
+    }
+    
     const currentQuestion = test.questions[currentQuestionIndex];
     
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
-        const prevOptionIndex = Math.max(focusedOptionIndex - 1, 0);
+        const prevOptionIndex = Math.max(focusedOptionIndex - 1, -1);
         setFocusedOptionIndex(prevOptionIndex);
-        optionRefs.current[prevOptionIndex]?.focus();
-        // Only play audio if not currently loading or playing another audio
-        if (currentQuestion.options[prevOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
-          playOptionAudio(prevOptionIndex);
+        if (prevOptionIndex === -1) {
+            questionTextRef.current?.focus();
+        } else if (prevOptionIndex < currentQuestion.options.length) {
+            optionRefs.current[prevOptionIndex]?.focus();
+            if (currentQuestion.options[prevOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
+              playOptionAudio(prevOptionIndex);
+            }
+        } else if (prevOptionIndex === currentQuestion.options.length) {
+            submitButtonRef.current?.focus();
         }
         break;
         
       case 'ArrowDown':
         e.preventDefault();
-        const nextOptionIndex = Math.min(focusedOptionIndex + 1, currentQuestion.options.length - 1);
+        const maxIndex = answerResult && (currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio) 
+          ? currentQuestion.options.length + 1 
+          : currentQuestion.options.length;
+        const nextOptionIndex = Math.min(focusedOptionIndex + 1, maxIndex);
         setFocusedOptionIndex(nextOptionIndex);
-        optionRefs.current[nextOptionIndex]?.focus();
-        // Only play audio if not currently loading or playing another audio
-        if (currentQuestion.options[nextOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
-          playOptionAudio(nextOptionIndex);
+        if (nextOptionIndex < currentQuestion.options.length) {
+            optionRefs.current[nextOptionIndex]?.focus();
+            if (currentQuestion.options[nextOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
+                playOptionAudio(nextOptionIndex);
+            }
+        } else if (nextOptionIndex === currentQuestion.options.length) {
+            submitButtonRef.current?.focus();
+        } else if (nextOptionIndex === currentQuestion.options.length + 1 && answerResult && (currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio)) {
+            solutionButtonRef.current?.focus();
         }
         break;
         
@@ -358,8 +376,14 @@ const UserTestPage: React.FC = () => {
         if (e.key === ' ' && isPlayingAudio) {
           stopAudio();
         } else if (e.key === 'Enter') {
-          const selectedOption = currentQuestion.options[focusedOptionIndex];
-          setSelectedAnswer(selectedOption.text);
+          if (focusedOptionIndex >= 0 && focusedOptionIndex < currentQuestion.options.length) {
+            const selectedOption = currentQuestion.options[focusedOptionIndex];
+            setSelectedAnswer(selectedOption.text);
+          } else if (focusedOptionIndex === currentQuestion.options.length) {
+            submitAnswer();
+          } else if (focusedOptionIndex === currentQuestion.options.length + 1 && answerResult && (currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio)) {
+            showSolutionHandler();
+          }
         }
         break;
         
@@ -399,7 +423,7 @@ const UserTestPage: React.FC = () => {
   };
 
   const goToNextQuestion = () => {
-    if (currentQuestionIndex < test!.questions.length - 1) {
+    if (test && currentQuestionIndex < test.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
@@ -420,7 +444,27 @@ const UserTestPage: React.FC = () => {
         [currentQuestion._id]: selectedAnswer
       }));
       
-      // Answer result is shown in UI, no text-to-speech needed
+      // Announce result and then focus solution button
+      const resultCallback = () => {
+        // After result is announced, focus solution button and announce it
+        setTimeout(() => {
+          if ((currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio) && solutionButtonRef.current) {
+            // Update focused option index to solution button position
+            setFocusedOptionIndex(currentQuestion.options.length + 1);
+            solutionButtonRef.current.focus();
+            speak('Çözümü dinle');
+          }
+        }, 500);
+      };
+
+      setTimeout(() => {
+        if (!response.data.isCorrect) {
+          speak(`Yanlış. Doğru cevap: ${response.data.correctAnswer}`, resultCallback);
+        } else {
+          speak('Doğru!', resultCallback);
+        }
+      }, 500);
+
     } catch (err) {
       // Error handled silently
     }
@@ -491,12 +535,12 @@ const UserTestPage: React.FC = () => {
       <Card sx={{ mb: 4, minHeight: '400px' }}>
         <CardContent sx={{ padding: '2rem' }}>
           {/* Question */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3 }} ref={questionRef}>
             <Typography variant="h5" component="h2" sx={{ mb: 2, fontSize: '1.8rem' }}>
               Soru {currentQuestionIndex + 1}
             </Typography>
             
-            <Typography variant="h6" sx={{ mb: 2, fontSize: '1.4rem', lineHeight: 1.6 }}>
+            <Typography ref={questionTextRef} tabIndex={-1} variant="h6" sx={{ mb: 2, fontSize: '1.4rem', lineHeight: 1.6, '&:focus': { outline: 'none' } }}>
               {currentQuestion.text}
             </Typography>
             
@@ -564,7 +608,7 @@ const UserTestPage: React.FC = () => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                   <Typography sx={{ flexGrow: 1, fontSize: '1.2rem' }}>
-                    {index + 1}. {option.text}
+                    {String.fromCharCode(65 + index)}. {option.text}
                   </Typography>
                   {option.hasAudio && (
                     <VolumeUp sx={{ ml: 1 }} />
@@ -577,13 +621,20 @@ const UserTestPage: React.FC = () => {
           {/* Submit Button */}
           <Box sx={{ mb: 3 }}>
             <Button
+              ref={submitButtonRef}
               variant="contained"
               color="primary"
               onClick={submitAnswer}
               disabled={!selectedAnswer || !!answerResult}
+              onFocus={() => {
+                // Only announce if not currently playing audio and not loading audio
+                if (!isPlayingAudio && !isLoadingAudio) {
+                  speak('Cevabı onayla');
+                }
+              }}
               sx={{ fontSize: '1.2rem', padding: '1rem 2rem' }}
             >
-              Cevabı Gönder
+              Cevabı Onayla
             </Button>
           </Box>
 
@@ -605,8 +656,17 @@ const UserTestPage: React.FC = () => {
               {/* Solution */}
               {(currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio) && (
                 <Button
+                  ref={solutionButtonRef}
                   variant="outlined"
                   onClick={showSolutionHandler}
+                  onFocus={() => {
+                    // Update focused option index to solution button position
+                    setFocusedOptionIndex(currentQuestion.options.length + 1);
+                    // Only announce if not currently playing audio and not loading audio
+                    if (!isPlayingAudio && !isLoadingAudio) {
+                      speak('Çözümü dinle');
+                    }
+                  }}
                   sx={{ mt: 2, fontSize: '1.1rem', padding: '0.8rem 1.5rem' }}
                 >
                   Çözümü Dinle/Gör
@@ -665,7 +725,7 @@ const UserTestPage: React.FC = () => {
         <Button
           variant="outlined"
           onClick={goToNextQuestion}
-          disabled={currentQuestionIndex === test.questions.length - 1}
+          disabled={!test || currentQuestionIndex === test.questions.length - 1}
           endIcon={<ArrowForward />}
           sx={{ fontSize: '1.2rem', padding: '1rem 2rem' }}
         >

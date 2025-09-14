@@ -1,4 +1,4 @@
-const User = require('../models/user');
+const User = require('../models/User');
 
 module.exports = function (req, res, next) {
   if (req.user && req.user.role === 'admin') {
