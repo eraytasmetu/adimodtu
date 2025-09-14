@@ -95,7 +95,7 @@ const TopicDetailPage: React.FC = () => {
 
         // Ünite bilgilerini al
         const unitRes = await api.get(`/units/${unitId}`);
-        setUnitData(unitRes.data);
+        setUnitData(unitRes.data.unit);
 
         // Konu bilgilerini al
         const topicRes = await api.get(`/topics/${topicId}`);
