@@ -17,6 +17,7 @@ import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 
 // Konu verisi için tip arayüzü
 interface TopicData {
@@ -41,7 +42,7 @@ interface UnitData {
 }
 
 const UserTopicsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, progress } = useAuth();
   const navigate = useNavigate();
   const { classId, unitId } = useParams<{ classId: string; unitId: string }>();
 
@@ -84,18 +85,17 @@ const UserTopicsPage: React.FC = () => {
       }
     };
 
+    // Sayfa açılışında selecttopic.mp3 çal
+    audioManager.play('/sounds/selecttopic.mp3', () => setIntroSpeechFinished(true));
+
     fetchData();
+
+    return () => {
+      audioManager.stop();
+    };
   }, [user, classId, unitId]);
 
-  useEffect(() => {
-    if (classData && unitData && user && classId && unitId) {
-      speak(`${classData.name} - ${unitData.title} konuları yükleniyor. Lütfen bir konu seçerek başla.`, () => {
-        setIntroSpeechFinished(true);
-      });
-    } else if (!user) {
-      setIntroSpeechFinished(true);
-    }
-  }, [classData, unitData, user, classId, unitId]);
+  // Başlangıç yönlendirme sesi kaldırıldı; sadece selecttopic.mp3 kullanıyoruz
 
   useEffect(() => {
     if (topics.length > 0 && introSpeechFinished && !loading) {
@@ -120,15 +120,21 @@ const UserTopicsPage: React.FC = () => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
-      const nextIndex = Math.min(focusedIndex + 1, totalElements - 1);
+      let nextIndex = focusedIndex + 1;
+      // Header'ı atla
+      if (nextIndex === 1) nextIndex = 2;
+      // Son konudan sonra Geri Dön butonuna geç
+      const lastTopicIndex = topics.length + 1; // topics start at 2, last is 2 + topics.length - 1 = topics.length + 1
+      if (focusedIndex === lastTopicIndex) {
+        nextIndex = 0;
+      }
+      nextIndex = Math.min(nextIndex, totalElements - 1);
       setFocusedIndex(nextIndex);
       
       if (nextIndex === 0) {
         backButtonRef.current?.focus();
-        speak('Geri dön butonu');
       } else if (nextIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.title} konuları başlığı`);
       } else {
         const topicIndex = nextIndex - 2;
         topicRefs.current[topicIndex]?.focus();
@@ -139,15 +145,15 @@ const UserTopicsPage: React.FC = () => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       e.stopPropagation();
-      const prevIndex = Math.max(focusedIndex - 1, 0);
+      let prevIndex = Math.max(focusedIndex - 1, 0);
+      // Header'ı atla
+      if (prevIndex === 1) prevIndex = 0;
       setFocusedIndex(prevIndex);
       
       if (prevIndex === 0) {
         backButtonRef.current?.focus();
-        speak('Geri dön butonu');
       } else if (prevIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.title} konuları başlığı`);
       } else {
         const topicIndex = prevIndex - 2;
         topicRefs.current[topicIndex]?.focus();
@@ -167,7 +173,6 @@ const UserTopicsPage: React.FC = () => {
   };
 
   const handleBackClick = () => {
-    speak("Ünite seçim sayfasına geri dönülüyor.");
     navigate(`/class/${classId}`);
   };
 
@@ -255,7 +260,8 @@ const UserTopicsPage: React.FC = () => {
               borderRadius: '8px'
             }
           }}
-          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.title} konuları başlığı`)}
+          onMouseEnter={() => audioManager.play('/sounds/back.mp3')}
+          onFocus={() => audioManager.play('/sounds/back.mp3')}
         >
           {classData?.name} - {unitData?.title} Konuları
         </Typography>
@@ -274,7 +280,8 @@ const UserTopicsPage: React.FC = () => {
               outlineOffset: '5px'
             }
           }}
-          onMouseEnter={() => speak('Geri dön butonu')}
+          onMouseEnter={() => audioManager.play('/sounds/back.mp3')}
+          onFocus={() => audioManager.play('/sounds/back.mp3')}
         >
           Geri Dön
         </Button>
@@ -346,23 +353,47 @@ const UserTopicsPage: React.FC = () => {
                   }}
                 >
                   <CardContent sx={{ padding: '1.5rem' }}>
-                    <Typography 
-                      gutterBottom 
-                      variant="h4" 
-                      component="h2"
-                      sx={{ 
-                        fontSize: '2rem',
-                        fontWeight: 'bold',
-                        mb: 2
-                      }}
-                    >
-                      {topic.name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography 
+                        gutterBottom 
+                        variant="h4" 
+                        component="h2"
+                        sx={{ 
+                          fontSize: '2rem',
+                          fontWeight: 'bold',
+                          mb: 0
+                        }}
+                      >
+                        {topic.name}
+                      </Typography>
+                      {progress?.listenedTopics.some(lt => lt.topicId === topic._id) && (
+                        <Box
+                          sx={{
+                            backgroundColor: 'primary.main',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          🎧
+                        </Box>
+                      )}
+                    </Box>
                     {topic.description && (
                       <Typography
                         sx={{ 
                           fontSize: '1.2rem',
-                          lineHeight: 1.6
+                          lineHeight: 1.6,
+                          maxHeight: '4.8rem', // 3 lines * 1.6 line-height
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical'
                         }}
                       >
                         {topic.description}

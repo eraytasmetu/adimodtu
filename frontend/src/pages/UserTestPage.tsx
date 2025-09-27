@@ -26,6 +26,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 
 interface QuestionOption {
   _id: string;
@@ -75,7 +76,7 @@ interface AnswerResult {
 }
 
 const UserTestPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshProgress } = useAuth();
   const navigate = useNavigate();
   const { testId } = useParams<{ testId: string }>();
 
@@ -91,6 +92,7 @@ const UserTestPage: React.FC = () => {
   const [currentAudioType, setCurrentAudioType] = useState<string>('');
   const [showSolution, setShowSolution] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [showTestCompletionScreen, setShowTestCompletionScreen] = useState(false);
 
   // Audio refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -99,6 +101,7 @@ const UserTestPage: React.FC = () => {
   const questionTextRef = useRef<HTMLHeadingElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const solutionButtonRef = useRef<HTMLButtonElement | null>(null); // Ref for the solution button
+  const testCompletionButtonRef = useRef<HTMLButtonElement | null>(null); // Ref for test completion button
   const audioRequestAbortController = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -411,6 +414,9 @@ const UserTestPage: React.FC = () => {
         e.preventDefault();
         if (currentQuestionIndex < test.questions.length - 1) {
           goToNextQuestion();
+        } else {
+          // Son soruda sağ ok tuşuna basınca test bitirme ekranını aç
+          setShowTestCompletionScreen(true);
         }
         break;
         
@@ -457,16 +463,30 @@ const UserTestPage: React.FC = () => {
             // Update focused option index to solution button position
             setFocusedOptionIndex(currentQuestion.options.length + 1);
             solutionButtonRef.current.focus();
-            speak('Çözümü dinle');
+            audioManager.play('/sounds/listensolution.mp3');
           }
         }, 500);
       };
 
       setTimeout(() => {
         if (!response.data.isCorrect) {
-          speak(`Yanlış. Doğru cevap: ${response.data.correctAnswer}`, resultCallback);
+          // Play appropriate incorrect answer audio based on correct answer
+          const correctAnswer = response.data.correctAnswer.toLowerCase();
+          let audioFile = '/sounds/falsecorrectanswera.mp3'; // default
+          
+          if (correctAnswer === 'a') {
+            audioFile = '/sounds/falsecorrectanswera.mp3';
+          } else if (correctAnswer === 'b') {
+            audioFile = '/sounds/falsecorrectanswerb.mp3';
+          } else if (correctAnswer === 'c') {
+            audioFile = '/sounds/falsecorrectanswerc.mp3';
+          } else if (correctAnswer === 'd') {
+            audioFile = '/sounds/falsecorrectanswerd.mp3';
+          }
+          
+          audioManager.play(audioFile, resultCallback);
         } else {
-          speak('Doğru!', resultCallback);
+          audioManager.play('/sounds/correctanswer.mp3', resultCallback);
         }
       }, 500);
 
@@ -480,6 +500,26 @@ const UserTestPage: React.FC = () => {
     if (test && test.questions[currentQuestionIndex].hasSolutionAudio) {
       playSolutionAudio();
     }
+  };
+
+  const completeTest = async () => {
+    try {
+      await api.post(`/tests/${testId}/complete`);
+      audioManager.play('/sounds/submittest.mp3');
+      // Refresh progress after completing test
+      if (refreshProgress) {
+        await refreshProgress();
+      }
+      // Navigate directly to tests page
+      navigate(-1); // Go back to tests page
+    } catch (err) {
+      console.error('Error completing test:', err);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    completeTest();
   };
 
   if (loading) {
@@ -507,6 +547,56 @@ const UserTestPage: React.FC = () => {
     );
   }
 
+
+  if (showTestCompletionScreen) {
+    return (
+      <Container 
+        maxWidth="md"
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') {
+            setShowTestCompletionScreen(false);
+          } else if (e.key === 'Enter') {
+            completeTest();
+          }
+        }}
+        tabIndex={0}
+      >
+        <Box sx={{ textAlign: 'center', mt: 8 }}>
+          <Card sx={{ p: 4 }}>
+            <CardContent>
+              <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
+                Testi Bitirmek İstiyor musunuz?
+              </Typography>
+              <Typography variant="h6" sx={{ mb: 4, color: 'text.secondary' }}>
+                Testi tamamlamak için aşağıdaki butona tıklayın.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexDirection: 'column', alignItems: 'center' }}>
+                <Button
+                  ref={testCompletionButtonRef}
+                  variant="contained"
+                  color="success"
+                  size="large"
+                  onClick={completeTest}
+                  onFocus={() => {
+                    audioManager.play('/sounds/submittest.mp3');
+                  }}
+                  sx={{ fontSize: '1.2rem', padding: '1rem 2rem', mb: 2 }}
+                  autoFocus
+                >
+                  Testi Bitir (Enter)
+                </Button>
+                <Typography variant="body2" color="text.secondary">
+                  Sol ok tuşu ile sorulara geri dönebilirsiniz
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+      </Container>
+    );
+  }
+
+
   const currentQuestion = test.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / test.questions.length) * 100;
 
@@ -515,6 +605,7 @@ const UserTestPage: React.FC = () => {
       maxWidth="lg"
       sx={{ mt: 4, mb: 4 }}
       onKeyDown={handleKeyDown}
+      onContextMenu={handleContextMenu}
       tabIndex={0}
     >
       {/* Header */}
@@ -634,7 +725,7 @@ const UserTestPage: React.FC = () => {
               onFocus={() => {
                 // Only announce if not currently playing audio and not loading audio
                 if (!isPlayingAudio && !isLoadingAudio) {
-                  speak('Cevabı onayla');
+                  audioManager.play('/sounds/verifyanswer.mp3');
                 }
               }}
               sx={{ fontSize: '1.2rem', padding: '1rem 2rem' }}
@@ -642,6 +733,7 @@ const UserTestPage: React.FC = () => {
               Cevabı Onayla
             </Button>
           </Box>
+
 
           {/* Answer Result */}
           {answerResult && (
@@ -669,7 +761,7 @@ const UserTestPage: React.FC = () => {
                     setFocusedOptionIndex(currentQuestion.options.length + 1);
                     // Only announce if not currently playing audio and not loading audio
                     if (!isPlayingAudio && !isLoadingAudio) {
-                      speak('Çözümü dinle');
+                      audioManager.play('/sounds/listensolution.mp3');
                     }
                   }}
                   sx={{ mt: 2, fontSize: '1.1rem', padding: '0.8rem 1.5rem' }}

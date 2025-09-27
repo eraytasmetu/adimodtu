@@ -84,6 +84,26 @@ exports.getTopicById = async (req, res) => {
       return res.status(404).json({ msg: 'Konu bulunamadı' });
     }
     
+    // Track topic listening if user is authenticated
+    if (req.user) {
+      // Ensure listenedTopics array exists
+      if (!req.user.listenedTopics) {
+        req.user.listenedTopics = [];
+      }
+      
+      const existingEntry = req.user.listenedTopics.find(
+        entry => entry.topicId.toString() === req.params.id
+      );
+      
+      if (!existingEntry) {
+        req.user.listenedTopics.push({
+          topicId: req.params.id,
+          listenedAt: new Date()
+        });
+        await req.user.save();
+      }
+    }
+    
     // Return topic without audio data
     const topicResponse = {
       _id: topic._id,

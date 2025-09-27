@@ -12,7 +12,7 @@ import {
   Link 
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 import api from '../api/api';
 
 const LoginPage: React.FC = () => {
@@ -45,7 +45,7 @@ const LoginPage: React.FC = () => {
   };
 
   useEffect(() => {
-    speak('Giriş sayfasına hoş geldiniz. Lütfen e-posta ve şifrenizi girerek devam edin.');
+    audioManager.play('/sounds/login.mp3');
   }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -60,7 +60,6 @@ const LoginPage: React.FC = () => {
       });
       
       setLoading(false);
-      speak('Giriş başarılı. Ana sayfaya yönlendiriliyorsunuz.');
       await login(response.data.token, response.data.user); // Merkezi login fonksiyonunu kullan
       
       // Check if user is admin and redirect accordingly
@@ -74,7 +73,6 @@ const LoginPage: React.FC = () => {
       setLoading(false);
       const errorMessage = err.response?.data?.msg || 'Bir hata oluştu. Lütfen tekrar deneyin.';
       setError(errorMessage);
-      speak(`Hata: ${errorMessage}`);
     }
   };
 

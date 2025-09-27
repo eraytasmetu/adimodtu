@@ -332,6 +332,26 @@ exports.checkQuestionAnswer = async (req, res) => {
 
     const isCorrect = question.correctAnswer === userAnswer;
 
+    // Track question completion
+    // Ensure completedQuestions array exists
+    if (!req.user.completedQuestions) {
+      req.user.completedQuestions = [];
+    }
+    
+    const existingEntry = req.user.completedQuestions.find(
+      entry => entry.questionId.toString() === questionId
+    );
+    
+    if (!existingEntry) {
+      req.user.completedQuestions.push({
+        questionId: questionId,
+        testId: testId,
+        isCorrect: isCorrect,
+        completedAt: new Date()
+      });
+      await req.user.save();
+    }
+
     res.json({
       isCorrect,
       correctAnswer: question.correctAnswer,

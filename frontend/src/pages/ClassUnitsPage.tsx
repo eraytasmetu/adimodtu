@@ -17,6 +17,7 @@ import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 
 // Ünite verisi için tip arayüzü
 interface UnitData {
@@ -45,6 +46,7 @@ const ClassUnitsPage: React.FC = () => {
   const [introSpeechFinished, setIntroSpeechFinished] = useState<boolean>(false);
   const [showSelectionDialog, setShowSelectionDialog] = useState<boolean>(false);
   const [selectedUnit, setSelectedUnit] = useState<UnitData | null>(null);
+  const [selectedUnitIndex, setSelectedUnitIndex] = useState<number | null>(null);
 
   // Refs for keyboard navigation
   const headerRef = useRef<HTMLHeadingElement>(null);
@@ -53,6 +55,22 @@ const ClassUnitsPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const konularButtonRef = useRef<HTMLButtonElement>(null);
   const testlerButtonRef = useRef<HTMLButtonElement>(null);
+  const introAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const isFiveClass = () => {
+    const name = classData?.name || '';
+    const normalized = name.replace(/\s+/g, '').toLowerCase();
+    return normalized.includes('5.sınıf') || normalized.includes('5.sinif') || normalized.includes('5sinif');
+  };
+
+  const announceUnit = (unitTitle: string, unitIndex: number) => {
+    if (isFiveClass() && unitIndex >= 0 && unitIndex < 4) {
+      const src = `/sounds/unit${unitIndex + 1}.mp3`;
+      audioManager.play(src).catch(() => {});
+    } else {
+      speak(`${unitTitle} ünitesi.`);
+    }
+  };
 
   useEffect(() => {
     const fetchClassAndUnits = async () => {
@@ -69,30 +87,28 @@ const ClassUnitsPage: React.FC = () => {
         unitRefs.current = new Array(unitsRes.data.length).fill(null);
       } catch (err) {
         setError('Üniteler yüklenirken bir hata oluştu.');
-        speak('Üniteler yüklenirken bir hata oluştu.');
       } finally {
         setLoading(false);
       }
     };
 
+    // Sayfa açılışında sabit seçim sesi çal
+    audioManager.play('/sounds/selectunit.mp3', () => setIntroSpeechFinished(true));
+
     fetchClassAndUnits();
+
+    return () => {
+      audioManager.stop();
+    };
   }, [user, classId]);
 
-  useEffect(() => {
-    if (classData && user && classId) {
-      speak(`${classData.name} üniteleri yükleniyor. Lütfen bir ünite seçerek başla.`, () => {
-        setIntroSpeechFinished(true);
-      });
-    } else if (!user) {
-      setIntroSpeechFinished(true);
-    }
-  }, [classData, user, classId]);
+  // Başlangıç yönlendirme sesi kaldırıldı; sadece selectunit.mp3 kullanıyoruz
 
   useEffect(() => {
     if (units.length > 0 && introSpeechFinished && !loading) {
       setFocusedIndex(2);
       unitRefs.current[0]?.focus();
-      speak(`${units[0].title} ünitesi.`);
+      announceUnit(units[0].title, 0);
     }
   }, [units, introSpeechFinished, loading]);
 
@@ -114,11 +130,9 @@ const ClassUnitsPage: React.FC = () => {
         if (focusedIndex === 0) {
           setFocusedIndex(1);
           testlerButtonRef.current?.focus();
-          speak('Testler butonu');
         } else {
           setFocusedIndex(0);
           konularButtonRef.current?.focus();
-          speak('Konular butonu');
         }
         return;
       }
@@ -148,38 +162,44 @@ const ClassUnitsPage: React.FC = () => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
-      const nextIndex = Math.min(focusedIndex + 1, totalElements - 1);
+      let nextIndex = focusedIndex + 1;
+      // Header'ı atla
+      if (nextIndex === 1) nextIndex = 2;
+      // Son üniteden sonra Geri Dön butonuna geç
+      const lastUnitIndex = units.length + 1; // units start at 2, last is 2 + units.length - 1 = units.length + 1
+      if (focusedIndex === lastUnitIndex) {
+        nextIndex = 0;
+      }
+      nextIndex = Math.min(nextIndex, totalElements - 1);
       setFocusedIndex(nextIndex);
-      
+
       if (nextIndex === 0) {
         backButtonRef.current?.focus();
-        speak('Geri dön butonu');
       } else if (nextIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} üniteleri başlığı`);
       } else {
         const unitIndex = nextIndex - 2;
         unitRefs.current[unitIndex]?.focus();
-        speak(`${units[unitIndex].title} ünitesi.`);
+        announceUnit(units[unitIndex].title, unitIndex);
       }
     }
     
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       e.stopPropagation();
-      const prevIndex = Math.max(focusedIndex - 1, 0);
+      let prevIndex = Math.max(focusedIndex - 1, 0);
+      // Header'ı atla
+      if (prevIndex === 1) prevIndex = 0;
       setFocusedIndex(prevIndex);
-      
+
       if (prevIndex === 0) {
         backButtonRef.current?.focus();
-        speak('Geri dön butonu');
       } else if (prevIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} üniteleri başlığı`);
       } else {
         const unitIndex = prevIndex - 2;
         unitRefs.current[unitIndex]?.focus();
-        speak(`${units[unitIndex].title} ünitesi.`);
+        announceUnit(units[unitIndex].title, unitIndex);
       }
     }
     
@@ -195,12 +215,14 @@ const ClassUnitsPage: React.FC = () => {
   };
 
   const handleUnitClick = (unitId: string, unitTitle: string) => {
-    const unit = units.find(u => u._id === unitId);
+    const unitIndex = units.findIndex(u => u._id === unitId);
+    const unit = unitIndex >= 0 ? units[unitIndex] : undefined;
     if (unit) {
       setSelectedUnit(unit);
+      setSelectedUnitIndex(unitIndex);
       setShowSelectionDialog(true);
+      audioManager.play('/sounds/selecttopicorstest.mp3').catch(() => {});
       setFocusedIndex(0); // Start with Konular button focused
-      speak(`${unitTitle} ünitesi seçildi. Konular veya Testler arasından seçim yapın.`);
       // Focus the first button after a short delay
       setTimeout(() => {
         konularButtonRef.current?.focus();
@@ -210,24 +232,30 @@ const ClassUnitsPage: React.FC = () => {
 
   const handleCloseSelectionDialog = () => {
     setShowSelectionDialog(false);
+    const restoreIndex = selectedUnitIndex;
     setSelectedUnit(null);
-    speak('Seçim iptal edildi. Ünite seçimine geri dönüldü.');
+    if (restoreIndex !== null && restoreIndex >= 0 && restoreIndex < units.length) {
+      // Focus back to the previously selected unit and announce it again
+      setFocusedIndex(2 + restoreIndex);
+      setTimeout(() => {
+        unitRefs.current[restoreIndex]?.focus();
+        announceUnit(units[restoreIndex].title, restoreIndex);
+      }, 0);
+    }
   };
 
   const handleKonularClick = () => {
-    speak('Konular sayfasına yönlendiriliyor');
     setShowSelectionDialog(false);
     navigate(`/topics/${classId}/${selectedUnit?._id}`);
   };
 
   const handleTestlerClick = () => {
-    speak('Testler sayfasına yönlendiriliyor');
     setShowSelectionDialog(false);
     navigate(`/tests/${classId}/${selectedUnit?._id}`);
   };
   
   const handleBackClick = () => {
-    speak("Sınıflar sayfasına geri dönülüyor.");
+    audioManager.play('/sounds/back.mp3');
     navigate('/');
   }
 
@@ -294,7 +322,7 @@ const ClassUnitsPage: React.FC = () => {
               borderRadius: '8px'
             }
           }}
-          onMouseEnter={() => speak(`${classData?.name} üniteleri başlığı`)}
+          onMouseEnter={() => {}}
         >
           {classData?.name} Üniteleri
         </Typography>
@@ -313,7 +341,8 @@ const ClassUnitsPage: React.FC = () => {
               outlineOffset: '5px'
             }
           }}
-          onMouseEnter={() => speak('Geri dön butonu')}
+          onMouseEnter={() => audioManager.play('/sounds/back.mp3')}
+          onFocus={() => audioManager.play('/sounds/back.mp3')}
         >
           Geri Dön
         </Button>
@@ -375,7 +404,7 @@ const ClassUnitsPage: React.FC = () => {
                     transform: 'scale(1.02)'
                   }
                 }}
-                onMouseEnter={() => speak(`${unit.title} ünitesi.`)}
+                onMouseEnter={() => announceUnit(unit.title, index)}
               >
                 <CardActionArea
                   onClick={() => handleUnitClick(unit._id, unit.title)}
@@ -481,7 +510,8 @@ const ClassUnitsPage: React.FC = () => {
                     outlineOffset: '5px'
                   }
                 }}
-                onMouseEnter={() => speak('Konular butonu')}
+                onMouseEnter={() => audioManager.play('/sounds/topics.mp3')}
+                onFocus={() => audioManager.play('/sounds/topics.mp3')}
               >
                 📚 Konular
               </Button>
@@ -502,7 +532,8 @@ const ClassUnitsPage: React.FC = () => {
                     outlineOffset: '5px'
                   }
                 }}
-                onMouseEnter={() => speak('Testler butonu')}
+                onMouseEnter={() => audioManager.play('/sounds/tests.mp3')}
+                onFocus={() => audioManager.play('/sounds/tests.mp3')}
               >
                 📝 Testler
               </Button>

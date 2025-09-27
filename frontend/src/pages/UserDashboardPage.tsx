@@ -14,7 +14,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
-import { speak } from '../utils/speechUtils';
+// speak kaldırıldı: bu sayfada sabit ses dosyaları kullanılacak
+import audioManager from '../utils/audioManager';
 
 // Sınıf verisi için bir tip arayüzü tanımlayalım
 interface ClassData {
@@ -23,7 +24,7 @@ interface ClassData {
 }
 
 const UserDashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, progress, logout } = useAuth();
   const navigate = useNavigate();
 
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -32,6 +33,33 @@ const UserDashboardPage: React.FC = () => {
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const [introSpeechFinished, setIntroSpeechFinished] = useState<boolean>(false);
 
+  // Sınıf sesleri için yardımcı fonksiyon
+
+  const getClassAudioPath = (className: string): string | null => {
+    // Örn: "5. Sınıf" → "/sounds/5sinif.mp3"
+    if (!className) return null;
+    const normalized = className.replace(/\s+/g, '').toLowerCase();
+    if (normalized.includes('5.sınıf') || normalized.includes('5.sinif') || normalized.includes('5sinif')) {
+      return '/sounds/5sinif.mp3';
+    }
+    if (normalized.includes('6.sınıf') || normalized.includes('6.sinif') || normalized.includes('6sinif')) {
+      return '/sounds/6sinif.mp3';
+    }
+    if (normalized.includes('7.sınıf') || normalized.includes('7.sinif') || normalized.includes('7sinif')) {
+      return '/sounds/7sinif.mp3';
+    }
+    if (normalized.includes('8.sınıf') || normalized.includes('8.sinif') || normalized.includes('8sinif')) {
+      return '/sounds/8sinif.mp3';
+    }
+    return null;
+  };
+
+  const playClassAudio = (className: string) => {
+    const src = getClassAudioPath(className);
+    if (!src) return;
+    audioManager.play(src).catch(() => {});
+  };
+
   // Refs for keyboard navigation
   const headerRef = useRef<HTMLHeadingElement>(null);
   const logoutButtonRef = useRef<HTMLButtonElement>(null);
@@ -39,11 +67,9 @@ const UserDashboardPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Sayfa yüklendiğinde sesli karşılama yap
+    // Sayfa yüklendiğinde statik karşılama sesini çal
     if (user) {
-      speak(`${user.name}, eğitim platformuna hoş geldin. Lütfen bir sınıf seçerek başla.`, () => {
-        setIntroSpeechFinished(true);
-      });
+      audioManager.play('/sounds/intro.mp3', () => setIntroSpeechFinished(true));
     } else {
       setIntroSpeechFinished(true);
     }
@@ -57,20 +83,23 @@ const UserDashboardPage: React.FC = () => {
         classRefs.current = new Array(res.data.length).fill(null);
       } catch (err) {
         setError('Sınıflar yüklenirken bir hata oluştu.');
-        speak('Sınıflar yüklenirken bir hata oluştu.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchClasses();
+
+    return () => {
+      audioManager.stop();
+    };
   }, [user]);
 
   useEffect(() => {
     if (classes.length > 0 && introSpeechFinished && !loading) {
       setFocusedIndex(2);
       classRefs.current[0]?.focus();
-      speak(`${classes[0].name}`);
+      playClassAudio(classes[0].name);
     }
   }, [classes, introSpeechFinished, loading]);
 
@@ -81,38 +110,38 @@ const UserDashboardPage: React.FC = () => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
-      const nextIndex = Math.min(focusedIndex + 1, totalElements - 1);
+      let nextIndex = Math.min(focusedIndex + 1, totalElements - 1);
+      // Header'ı atla
+      if (nextIndex === 1) nextIndex = Math.min(2, totalElements - 1);
       setFocusedIndex(nextIndex);
       
       if (nextIndex === 0) {
         logoutButtonRef.current?.focus();
-        speak('Çıkış Yap butonu');
       } else if (nextIndex === 1) {
         headerRef.current?.focus();
-        speak('Sınıflar başlığı');
       } else {
         const classIndex = nextIndex - 2;
         classRefs.current[classIndex]?.focus();
-        speak(`${classes[classIndex].name}`);
+        playClassAudio(classes[classIndex].name);
       }
     }
     
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       e.stopPropagation();
-      const prevIndex = Math.max(focusedIndex - 1, 0);
+      let prevIndex = Math.max(focusedIndex - 1, 0);
+      // Header'ı atla
+      if (prevIndex === 1) prevIndex = 0;
       setFocusedIndex(prevIndex);
       
       if (prevIndex === 0) {
         logoutButtonRef.current?.focus();
-        speak('Çıkış Yap butonu');
       } else if (prevIndex === 1) {
         headerRef.current?.focus();
-        speak('Sınıflar başlığı');
       } else {
         const classIndex = prevIndex - 2;
         classRefs.current[classIndex]?.focus();
-        speak(`${classes[classIndex].name}`);
+        playClassAudio(classes[classIndex].name);
       }
     }
     
@@ -128,12 +157,10 @@ const UserDashboardPage: React.FC = () => {
   };
 
   const handleClassClick = (classId: string, className: string) => {
-    speak(`${className} seçildi. Üniteler yükleniyor.`);
     navigate(`/class/${classId}`);
   };
   
   const handleLogout = () => {
-    speak("Çıkış yapılıyor.");
     logout();
   }
 
@@ -165,13 +192,8 @@ const UserDashboardPage: React.FC = () => {
             color: 'primary.main'
           }}
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              speak('Sınıflar sayfası. Bu sayfada mevcut sınıfları görebilir ve seçebilirsiniz.');
-            }
-          }}
-          onMouseEnter={() => speak('Sınıflar sayfası. Bu sayfada mevcut sınıfları görebilir ve seçebilirsiniz.')}
+          onKeyDown={() => {}}
+          onMouseEnter={() => {}}
         >
           Sınıflar
         </Typography>
@@ -187,7 +209,7 @@ const UserDashboardPage: React.FC = () => {
               minHeight: '60px',
               mr: 2,
             }}
-            onMouseEnter={() => speak('Admin paneline git')}
+          onMouseEnter={() => {}}
           >
             Admin Paneli
           </Button>
@@ -208,7 +230,7 @@ const UserDashboardPage: React.FC = () => {
               outlineOffset: '5px'
             }
           }}
-          onMouseEnter={() => speak('Çıkış Yap butonu')}
+          onMouseEnter={() => {}}
         >
           Çıkış Yap
         </Button>
@@ -225,6 +247,57 @@ const UserDashboardPage: React.FC = () => {
         >
           {error}
         </Alert>
+      )}
+
+      {/* Progress Summary */}
+      {progress !== null && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+            İlerleme Durumunuz
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{xs: 6, sm: 3}}>
+              <Card sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="h6" color="primary">
+                  {progress.listenedTopics.length}
+                </Typography>
+                <Typography variant="body2">
+                  Dinlenen Konu
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid size={{xs: 6, sm: 3}}>
+              <Card sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="h6" color="success.main">
+                  {progress.completedQuestions.filter(q => q.isCorrect).length}
+                </Typography>
+                <Typography variant="body2">
+                  Doğru Cevap
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid size={{xs: 6, sm: 3}}>
+              <Card sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="h6" color="error.main">
+                  {progress.completedQuestions.filter(q => !q.isCorrect).length}
+                </Typography>
+                <Typography variant="body2">
+                  Yanlış Cevap
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid size={{xs: 6, sm: 3}}>
+              <Card sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="h6" color="info.main">
+                  {progress.completedTests.length}
+                </Typography>
+                <Typography variant="body2">
+                  Tamamlanan Test
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
       )}
 
       <Grid container spacing={6}>
@@ -254,7 +327,7 @@ const UserDashboardPage: React.FC = () => {
                   transform: 'scale(1.02)'
                 }
               }}
-              onMouseEnter={() => speak(`${classItem.name}`)}
+              onMouseEnter={() => playClassAudio(classItem.name)}
             >
               <CardActionArea
                 onClick={() => handleClassClick(classItem._id, classItem.name)}

@@ -24,6 +24,7 @@ import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 
 // Veri tipleri
 interface TopicData {
@@ -195,9 +196,10 @@ const TopicDetailPage: React.FC = () => {
     }
   };
 
-  const loadAudioUrl = async (url: string) => {
+  const loadAudioUrl = async (url: string, retryCount = 0) => {
     setIsAudioLoading(true);
     setAudioError('');
+    
     try {
       const response = await api.get(url, { 
         responseType: 'arraybuffer'
@@ -225,23 +227,32 @@ const TopicDetailPage: React.FC = () => {
         };
         
         audioRef.current.onerror = () => {
-          setAudioError('Audio yüklenirken hata oluştu');
+          console.error('Audio element error');
           setIsAudioLoading(false);
+          // Auto-retry up to 3 times
+          if (retryCount < 3) {
+            setTimeout(() => {
+              loadAudioUrl(url, retryCount + 1);
+            }, 1000);
+          } else {
+            setAudioError('Audio yüklenirken hata oluştu. Lütfen sayfayı yenileyin.');
+          }
         };
       }
     } catch (err) {
       console.error('Error loading audio from MongoDB:', err);
-      setAudioError('Audio yüklenemedi. MongoDB hatası.');
       setIsAudioLoading(false);
+      // Auto-retry up to 3 times
+      if (retryCount < 3) {
+        setTimeout(() => {
+          loadAudioUrl(url, retryCount + 1);
+        }, 1000);
+      } else {
+        setAudioError('Audio yüklenemedi. MongoDB hatası. Lütfen sayfayı yenileyin.');
+      }
     }
   };
 
-  const handleRetryAudio = () => {
-    setAudioError('');
-    if (audioUrls.length > 0) {
-      loadAudioUrl(audioUrls[currentAudioUrlIndex]);
-    }
-  };
 
   // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -311,6 +322,7 @@ const TopicDetailPage: React.FC = () => {
   };
 
   const handleBackClick = () => {
+    audioManager.play('/sounds/back.mp3');
     navigate(`/topics/${classId}/${unitId}`);
   };
 
@@ -455,8 +467,9 @@ const TopicDetailPage: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Audio Player */}
-      <Card sx={{ p: 4, mb: 4 }}>
+      {/* Audio Player - Only show when topic data is loaded */}
+      {topic && (
+        <Card sx={{ p: 4, mb: 4 }}>
         <CardContent>
           <Typography 
             variant="h4" 
@@ -485,17 +498,9 @@ const TopicDetailPage: React.FC = () => {
               <Alert 
                 severity="error" 
                 sx={{ fontSize: '1.1rem', mb: 2 }}
-                action={
-                  <Button color="inherit" size="small" onClick={handleRetryAudio}>
-                    Tekrar Dene
-                  </Button>
-                }
               >
                 {audioError}
               </Alert>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                MongoDB audio yükleniyor...
-              </Typography>
             </Box>
           )}
 
@@ -504,7 +509,7 @@ const TopicDetailPage: React.FC = () => {
             <Box sx={{ textAlign: 'center', mb: 3 }}>
               <CircularProgress size={40} sx={{ mr: 2 }} />
               <Typography variant="body1" sx={{ display: 'inline' }}>
-                Audio yükleniyor... MongoDB'den
+                Ses yükleniyor...
               </Typography>
             </Box>
           )}
@@ -640,7 +645,8 @@ const TopicDetailPage: React.FC = () => {
             </Typography>
           </Box>
         </CardContent>
-      </Card>
+        </Card>
+      )}
 
       {/* Topic Content */}
       {topic.content && (

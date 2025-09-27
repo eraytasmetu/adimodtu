@@ -17,6 +17,7 @@ import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 
 // Test verisi için tip arayüzü
 interface TestData {
@@ -39,7 +40,7 @@ interface UnitData {
 }
 
 const UserTestsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, progress } = useAuth();
   const navigate = useNavigate();
   const { classId, unitId } = useParams<{ classId: string; unitId: string }>();
 
@@ -82,18 +83,17 @@ const UserTestsPage: React.FC = () => {
       }
     };
 
+    // Sayfa açılışında selecttest.mp3 çal
+    audioManager.play('/sounds/selecttest.mp3', () => setIntroSpeechFinished(true));
+
     fetchData();
+
+    return () => {
+      audioManager.stop();
+    };
   }, [user, classId, unitId]);
 
-  useEffect(() => {
-    if (classData && unitData && user && classId && unitId) {
-      speak(`${classData.name} - ${unitData.title} testleri yükleniyor. Lütfen bir test seçerek başla.`, () => {
-        setIntroSpeechFinished(true);
-      });
-    } else if (!user) {
-      setIntroSpeechFinished(true);
-    }
-  }, [classData, unitData, user, classId, unitId]);
+  // Başlangıç yönlendirme sesi kaldırıldı; sadece selecttest.mp3 kullanıyoruz
 
   useEffect(() => {
     if (tests.length > 0 && introSpeechFinished && !loading) {
@@ -118,15 +118,21 @@ const UserTestsPage: React.FC = () => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
-      const nextIndex = Math.min(focusedIndex + 1, totalElements - 1);
+      let nextIndex = focusedIndex + 1;
+      // Header'ı atla
+      if (nextIndex === 1) nextIndex = 2;
+      // Son testten sonra Geri Dön butonuna geç
+      const lastTestIndex = tests.length + 1; // tests start at 2, last is 2 + tests.length - 1 = tests.length + 1
+      if (focusedIndex === lastTestIndex) {
+        nextIndex = 0;
+      }
+      nextIndex = Math.min(nextIndex, totalElements - 1);
       setFocusedIndex(nextIndex);
       
       if (nextIndex === 0) {
         backButtonRef.current?.focus();
-        speak('Geri dön butonu');
       } else if (nextIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.title} testleri başlığı`);
       } else {
         const testIndex = nextIndex - 2;
         testRefs.current[testIndex]?.focus();
@@ -137,15 +143,15 @@ const UserTestsPage: React.FC = () => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       e.stopPropagation();
-      const prevIndex = Math.max(focusedIndex - 1, 0);
+      let prevIndex = Math.max(focusedIndex - 1, 0);
+      // Header'ı atla
+      if (prevIndex === 1) prevIndex = 0;
       setFocusedIndex(prevIndex);
       
       if (prevIndex === 0) {
         backButtonRef.current?.focus();
-        speak('Geri dön butonu');
       } else if (prevIndex === 1) {
         headerRef.current?.focus();
-        speak(`${classData?.name} - ${unitData?.title} testleri başlığı`);
       } else {
         const testIndex = prevIndex - 2;
         testRefs.current[testIndex]?.focus();
@@ -165,12 +171,10 @@ const UserTestsPage: React.FC = () => {
   };
 
   const handleBackClick = () => {
-    speak("Ünite seçim sayfasına geri dönülüyor.");
     navigate(`/class/${classId}`);
   };
 
   const handleTestClick = (test: TestData) => {
-    speak(`${test.name} testi seçildi`);
     navigate(`/test/${test._id}`);
   };
 
@@ -254,7 +258,7 @@ const UserTestsPage: React.FC = () => {
               borderRadius: '8px'
             }
           }}
-          onMouseEnter={() => speak(`${classData?.name} - ${unitData?.title} testleri başlığı`)}
+          onMouseEnter={() => {}}
         >
           {classData?.name} - {unitData?.title} Testleri
         </Typography>
@@ -273,7 +277,8 @@ const UserTestsPage: React.FC = () => {
               outlineOffset: '5px'
             }
           }}
-          onMouseEnter={() => speak('Geri dön butonu')}
+          onMouseEnter={() => audioManager.play('/sounds/back.mp3')}
+          onFocus={() => audioManager.play('/sounds/back.mp3')}
         >
           Geri Dön
         </Button>
@@ -345,24 +350,48 @@ const UserTestsPage: React.FC = () => {
                   }}
                 >
                   <CardContent sx={{ padding: '1.5rem' }}>
-                    <Typography 
-                      gutterBottom 
-                      variant="h4" 
-                      component="h2"
-                      sx={{ 
-                        fontSize: '2rem',
-                        fontWeight: 'bold',
-                        mb: 2
-                      }}
-                    >
-                      {test.name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography 
+                        gutterBottom 
+                        variant="h4" 
+                        component="h2"
+                        sx={{ 
+                          fontSize: '2rem',
+                          fontWeight: 'bold',
+                          mb: 0
+                        }}
+                      >
+                        {test.name}
+                      </Typography>
+                      {progress?.completedTests.includes(test._id) && (
+                        <Box
+                          sx={{
+                            backgroundColor: 'success.main',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          ✓
+                        </Box>
+                      )}
+                    </Box>
                     {test.description && (
                       <Typography
                         sx={{ 
                           fontSize: '1.2rem',
                           lineHeight: 1.6,
-                          mb: 2
+                          mb: 2,
+                          maxHeight: '4.8rem', // 3 lines
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical'
                         }}
                       >
                         {test.description}
