@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
-import { speak } from '../utils/speechUtils';
+import audioManager from '../utils/audioManager';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -53,7 +53,7 @@ const RegisterPage: React.FC = () => {
   };
   
   useEffect(() => {
-    speak('Kayıt sayfasına hoş geldiniz. Lütfen bilgilerinizi girerek hesabınızı oluşturun.');
+    audioManager.play('/sounds/register.mp3');
   }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -63,7 +63,6 @@ const RegisterPage: React.FC = () => {
     if (password !== confirmPassword) {
       const errorMessage = 'Şifreler eşleşmiyor. Lütfen kontrol edin.';
       setError(errorMessage);
-      speak(errorMessage);
       return;
     }
     
@@ -77,7 +76,6 @@ const RegisterPage: React.FC = () => {
       });
 
       setLoading(false);
-      speak('Kayıt başarılı. Giriş yapılıyor ve ana sayfaya yönlendiriliyorsunuz.');
       await login(response.data.token, response.data.user); // Merkezi login fonksiyonunu kullan
       
       // Check if user is admin and redirect accordingly
@@ -91,7 +89,6 @@ const RegisterPage: React.FC = () => {
       setLoading(false);
       const errorMessage = err.response?.data?.msg || 'Bir hata oluştu. Lütfen tekrar deneyin.';
       setError(errorMessage);
-      speak(`Hata: ${errorMessage}`);
     }
   };
 

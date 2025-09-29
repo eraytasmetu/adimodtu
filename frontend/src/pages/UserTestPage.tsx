@@ -76,7 +76,7 @@ interface AnswerResult {
 }
 
 const UserTestPage: React.FC = () => {
-  const { user, refreshProgress } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { testId } = useParams<{ testId: string }>();
 
@@ -506,10 +506,6 @@ const UserTestPage: React.FC = () => {
     try {
       await api.post(`/tests/${testId}/complete`);
       audioManager.play('/sounds/submittest.mp3');
-      // Refresh progress after completing test
-      if (refreshProgress) {
-        await refreshProgress();
-      }
       // Navigate directly to tests page
       navigate(-1); // Go back to tests page
     } catch (err) {

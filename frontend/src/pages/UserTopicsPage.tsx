@@ -42,7 +42,7 @@ interface UnitData {
 }
 
 const UserTopicsPage: React.FC = () => {
-  const { user, progress } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { classId, unitId } = useParams<{ classId: string; unitId: string }>();
 
@@ -366,23 +366,7 @@ const UserTopicsPage: React.FC = () => {
                       >
                         {topic.name}
                       </Typography>
-                      {progress?.listenedTopics.some(lt => lt.topicId === topic._id) && (
-                        <Box
-                          sx={{
-                            backgroundColor: 'primary.main',
-                            color: 'white',
-                            borderRadius: '50%',
-                            width: 24,
-                            height: 24,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.8rem'
-                          }}
-                        >
-                          🎧
-                        </Box>
-                      )}
+                      
                     </Box>
                     {topic.description && (
                       <Typography

@@ -250,52 +250,14 @@ const UserDashboardPage: React.FC = () => {
       )}
 
       {/* Progress Summary */}
-      {progress !== null && (
+      {false && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
             İlerleme Durumunuz
           </Typography>
           <Grid container spacing={2}>
-            <Grid size={{xs: 6, sm: 3}}>
-              <Card sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" color="primary">
-                  {progress.listenedTopics.length}
-                </Typography>
-                <Typography variant="body2">
-                  Dinlenen Konu
-                </Typography>
-              </Card>
-            </Grid>
-            <Grid size={{xs: 6, sm: 3}}>
-              <Card sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" color="success.main">
-                  {progress.completedQuestions.filter(q => q.isCorrect).length}
-                </Typography>
-                <Typography variant="body2">
-                  Doğru Cevap
-                </Typography>
-              </Card>
-            </Grid>
-            <Grid size={{xs: 6, sm: 3}}>
-              <Card sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" color="error.main">
-                  {progress.completedQuestions.filter(q => !q.isCorrect).length}
-                </Typography>
-                <Typography variant="body2">
-                  Yanlış Cevap
-                </Typography>
-              </Card>
-            </Grid>
-            <Grid size={{xs: 6, sm: 3}}>
-              <Card sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" color="info.main">
-                  {progress.completedTests.length}
-                </Typography>
-                <Typography variant="body2">
-                  Tamamlanan Test
-                </Typography>
-              </Card>
-            </Grid>
+            
+            
           </Grid>
         </Box>
       )}

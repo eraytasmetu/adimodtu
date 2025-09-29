@@ -26,50 +26,7 @@ const UserSchema = new Schema({
       ref: 'unit', 
     },
   ],
-  completedTopics: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: 'topic', 
-    },
-  ],
-  completedTests: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: 'test', 
-    },
-  ],
-  listenedTopics: [
-    {
-      topicId: {
-        type: Schema.Types.ObjectId,
-        ref: 'topic',
-      },
-      listenedAt: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
-  completedQuestions: [
-    {
-      questionId: {
-        type: Schema.Types.ObjectId,
-        ref: 'test',
-      },
-      testId: {
-        type: Schema.Types.ObjectId,
-        ref: 'test',
-      },
-      isCorrect: {
-        type: Boolean,
-        required: true,
-      },
-      completedAt: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
+  
 
   lastActivity: {
     activityType: {

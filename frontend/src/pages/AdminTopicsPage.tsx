@@ -286,8 +286,18 @@ const AdminTopicsPage: React.FC = () => {
                 <Typography variant="h6" component="h2" sx={{ mb: 1, fontSize: '1.3rem' }}>
                   {topic.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {topic.content}
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 2,
+                    fontSize: '1rem',
+                    lineHeight: 1.6,
+                    height: '4.8rem',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {(topic.content || '').slice(0, 100)}{(topic.content || '').length > 100 ? '…' : ''}
                 </Typography>
                 
                 {/* Audio Info */}

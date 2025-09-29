@@ -1,25 +1,12 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import api from '../api/api';
 
-interface UserProgress {
-  listenedTopics: Array<{
-    topicId: string;
-    listenedAt: string;
-  }>;
-  completedQuestions: Array<{
-    questionId: string;
-    testId: string;
-    isCorrect: boolean;
-    completedAt: string;
-  }>;
-  completedTests: string[];
-  completedTopics: string[];
-}
+type UserProgress = null;
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: any;
-  progress: UserProgress | null;
+  progress: UserProgress;
   loading: boolean;
   login: (token: string, userData?: any) => Promise<void>;
   logout: () => void;
@@ -31,18 +18,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<any>(null);
-  const [progress, setProgress] = useState<UserProgress | null>(null);
+  const [progress, setProgress] = useState<UserProgress>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const refreshProgress = async () => {
-    if (isAuthenticated) {
-      try {
-        const res = await api.get('/users/progress');
-        setProgress(res.data);
-      } catch (err) {
-        console.error('Error fetching progress:', err);
-      }
-    }
+    setProgress(null);
   };
 
   useEffect(() => {
@@ -53,21 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const res = await api.get('/users/me');
           setUser(res.data);
           setIsAuthenticated(true);
-          // Load progress after user is authenticated
-          try {
-            const progressRes = await api.get('/users/progress');
-            console.log('Progress loaded:', progressRes.data);
-            setProgress(progressRes.data);
-          } catch (progressErr) {
-            console.error('Error loading progress:', progressErr);
-            // Set empty progress if loading fails
-            setProgress({
-              listenedTopics: [],
-              completedQuestions: [],
-              completedTests: [],
-              completedTopics: []
-            });
-          }
+          setProgress(null);
         } catch (err) {
           localStorage.removeItem('authtoken');
           setIsAuthenticated(false);
@@ -97,21 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    // Load progress after login
-    try {
-      const progressRes = await api.get('/users/progress');
-      console.log('Progress loaded after login:', progressRes.data);
-      setProgress(progressRes.data);
-    } catch (err) {
-      console.error('Error fetching progress:', err);
-      // Set empty progress if loading fails
-      setProgress({
-        listenedTopics: [],
-        completedQuestions: [],
-        completedTests: [],
-        completedTopics: []
-      });
-    }
+    setProgress(null);
   };
 
   const logout = () => {

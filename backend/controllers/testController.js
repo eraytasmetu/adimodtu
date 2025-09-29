@@ -1,6 +1,6 @@
 const Test = require('../models/Test');
 const Unit = require('../models/Unit');
-const User = require('../models/User');
+// const User = require('../models/User');
 
 exports.getAllTests = async (req, res) => {
   try {
@@ -164,7 +164,7 @@ exports.getTestsByUnit = async (req, res) => {
   }
 };
 
-// New endpoint to serve question audio
+
 exports.getQuestionAudio = async (req, res) => {
   try {
     const { testId, questionId, audioType } = req.params;
@@ -261,7 +261,6 @@ exports.getQuestionAudio = async (req, res) => {
   }
 };
 
-// New endpoint to serve option audio
 exports.getOptionAudio = async (req, res) => {
   try {
     console.log('getOptionAudio called with params:', req.params);
@@ -332,25 +331,7 @@ exports.checkQuestionAnswer = async (req, res) => {
 
     const isCorrect = question.correctAnswer === userAnswer;
 
-    // Track question completion
-    // Ensure completedQuestions array exists
-    if (!req.user.completedQuestions) {
-      req.user.completedQuestions = [];
-    }
-    
-    const existingEntry = req.user.completedQuestions.find(
-      entry => entry.questionId.toString() === questionId
-    );
-    
-    if (!existingEntry) {
-      req.user.completedQuestions.push({
-        questionId: questionId,
-        testId: testId,
-        isCorrect: isCorrect,
-        completedAt: new Date()
-      });
-      await req.user.save();
-    }
+    // Removed completedQuestions tracking
 
     res.json({
       isCorrect,
@@ -362,46 +343,90 @@ exports.checkQuestionAnswer = async (req, res) => {
   }
 };
 
-exports.completeTest = async (req, res) => {
-  try {
-    const testId = req.params.id;
-    const test = await Test.findById(testId);
-    if (!test) {
-      return res.status(404).json({ msg: 'Test bulunamadı' });
-    }
-
-    await User.findByIdAndUpdate(req.user.id, {
-      $addToSet: { completedTests: testId },
-    });
-
-    res.json({ msg: 'Test başarıyla tamamlandı olarak işaretlendi.' });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Sunucu Hatası');
-  }
-};
+// Removed completed test tracking feature
 
 exports.updateTest = async (req, res) => {
   const { title, questions } = req.body;
   try {
-    const updatedTest = await Test.findByIdAndUpdate(
-      req.params.id,
-      { title, questions },
-      { new: true }
-    );
-    if (!updatedTest) {
+    const test = await Test.findById(req.params.id);
+    if (!test) {
       return res.status(404).json({ msg: 'Test bulunamadı' });
     }
-    
-    // Return test without audio data
+
+    if (typeof title === 'string') {
+      test.title = title;
+    }
+    if (Array.isArray(questions)) {
+      const existingById = new Map(test.questions.map(q => [q._id.toString(), q]));
+
+      const mergedQuestions = questions.map(incoming => {
+        const incomingId = incoming && incoming._id ? incoming._id.toString() : null;
+        const existing = incomingId ? existingById.get(incomingId) : null;
+
+        // Start with either clone of existing or empty structure
+        const merged = existing ? existing.toObject() : {};
+
+        // Basic fields
+        if (typeof incoming.text === 'string') merged.text = incoming.text;
+        if (typeof incoming.correctAnswer === 'string') merged.correctAnswer = incoming.correctAnswer;
+        if (typeof incoming.solutionText === 'string' || incoming.solutionText === null) merged.solutionText = incoming.solutionText;
+
+        // questionAudio: replace only if incoming contains a non-empty audio object with data
+        if (incoming.questionAudio && incoming.questionAudio.data) {
+          merged.questionAudio = incoming.questionAudio;
+        } else if (existing && existing.questionAudio) {
+          merged.questionAudio = existing.questionAudio;
+        } else {
+          merged.questionAudio = undefined;
+        }
+
+        // solutionAudio: same rule
+        if (incoming.solutionAudio && incoming.solutionAudio.data) {
+          merged.solutionAudio = incoming.solutionAudio;
+        } else if (existing && existing.solutionAudio) {
+          merged.solutionAudio = existing.solutionAudio;
+        } else {
+          merged.solutionAudio = undefined;
+        }
+
+        // Options: preserve per option audio if not provided
+        if (Array.isArray(incoming.options)) {
+          const existingOptionsById = existing ? new Map(existing.options.map(o => [o._id.toString(), o])) : new Map();
+          merged.options = incoming.options.map(opt => {
+            const optId = opt && opt._id ? opt._id.toString() : null;
+            const existingOpt = optId ? existingOptionsById.get(optId) : null;
+            const mergedOpt = existingOpt ? existingOpt.toObject() : {};
+            if (typeof opt.text === 'string') mergedOpt.text = opt.text;
+            if (opt.audio && opt.audio.data) {
+              mergedOpt.audio = opt.audio;
+            } else if (existingOpt && existingOpt.audio) {
+              mergedOpt.audio = existingOpt.audio;
+            } else {
+              mergedOpt.audio = undefined;
+            }
+            return mergedOpt;
+          });
+        } else if (existing) {
+          merged.options = existing.options;
+        }
+
+        return merged;
+      });
+
+      // Assign merged questions (replace entire array with merged content)
+      test.questions = mergedQuestions;
+    }
+
+    const saved = await test.save();
+
     const testResponse = {
-      _id: updatedTest._id,
-      title: updatedTest.title,
-      unit: updatedTest.unit,
-      questionCount: updatedTest.questions.length,
-      hasAudio: updatedTest.questions.some(q => q.questionAudio || q.options.some(o => o.audio) || q.solutionAudio)
+      _id: saved._id,
+      title: saved.title,
+      unit: saved.unit,
+      questionCount: saved.questions.length,
+      hasAudio: saved.questions.some(q => q.questionAudio || q.options.some(o => o.audio) || q.solutionAudio)
     };
-    
+
     res.json(testResponse);
   } catch (err) {
     console.error(err.message);

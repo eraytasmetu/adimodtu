@@ -84,25 +84,7 @@ exports.getTopicById = async (req, res) => {
       return res.status(404).json({ msg: 'Konu bulunamadı' });
     }
     
-    // Track topic listening if user is authenticated
-    if (req.user) {
-      // Ensure listenedTopics array exists
-      if (!req.user.listenedTopics) {
-        req.user.listenedTopics = [];
-      }
-      
-      const existingEntry = req.user.listenedTopics.find(
-        entry => entry.topicId.toString() === req.params.id
-      );
-      
-      if (!existingEntry) {
-        req.user.listenedTopics.push({
-          topicId: req.params.id,
-          listenedAt: new Date()
-        });
-        await req.user.save();
-      }
-    }
+    // Removed topic listening tracking
     
     // Return topic without audio data
     const topicResponse = {
@@ -187,11 +169,18 @@ exports.updateTopic = async (req, res) => {
   const audioFile = req.file;
 
   try {
-    const updateData = { title, content };
-    
-    // If new audio file is provided, update audio data
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) {
+      return res.status(404).json({ msg: 'Konu bulunamadı' });
+    }
+
+    // Update scalar fields
+    if (typeof title === 'string') topic.title = title;
+    if (typeof content === 'string') topic.content = content;
+
+    // Only replace audio if a new file is provided, otherwise preserve existing audio
     if (audioFile) {
-      updateData.audio = {
+      topic.audio = {
         data: audioFile.buffer,
         contentType: audioFile.mimetype,
         filename: audioFile.originalname,
@@ -199,25 +188,16 @@ exports.updateTopic = async (req, res) => {
       };
     }
 
-    const updatedTopic = await Topic.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
+    const saved = await topic.save();
 
-    if (!updatedTopic) {
-      return res.status(404).json({ msg: 'Konu bulunamadı' });
-    }
-
-    // Return topic without audio data
     const topicResponse = {
-      _id: updatedTopic._id,
-      title: updatedTopic.title,
-      content: updatedTopic.content,
-      unit: updatedTopic.unit,
-      hasAudio: true,
-      audioSize: updatedTopic.audio.size,
-      audioFilename: updatedTopic.audio.filename
+      _id: saved._id,
+      title: saved.title,
+      content: saved.content,
+      unit: saved.unit,
+      hasAudio: !!saved.audio,
+      audioSize: saved.audio?.size,
+      audioFilename: saved.audio?.filename
     };
 
     res.json(topicResponse);

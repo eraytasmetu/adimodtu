@@ -363,23 +363,7 @@ const UserTestsPage: React.FC = () => {
                       >
                         {test.name}
                       </Typography>
-                      {progress?.completedTests.includes(test._id) && (
-                        <Box
-                          sx={{
-                            backgroundColor: 'success.main',
-                            color: 'white',
-                            borderRadius: '50%',
-                            width: 24,
-                            height: 24,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.8rem'
-                          }}
-                        >
-                          ✓
-                        </Box>
-                      )}
+                      {/* Completed tests indicator removed */}
                     </Box>
                     {test.description && (
                       <Typography

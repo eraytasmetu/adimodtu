@@ -60,7 +60,6 @@ const TopicDetailPage: React.FC = () => {
   const [unitData, setUnitData] = useState<UnitData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const [introSpeechFinished, setIntroSpeechFinished] = useState<boolean>(false);
 
   // Audio state
@@ -68,7 +67,8 @@ const TopicDetailPage: React.FC = () => {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [audioError, setAudioError] = useState<string>('');
-  const [isAudioLoading, setIsAudioLoading] = useState<boolean>(false);
+  const [isAudioLoading, setIsAudioLoading] = useState<boolean>(true); // Başlangıçta yükleniyor
+  const [isAudioReady, setIsAudioReady] = useState<boolean>(false); // Sesin hazır olup olmadığını belirten yeni state
 
   // Refs for keyboard navigation
   const headerRef = useRef<HTMLHeadingElement>(null);
@@ -79,9 +79,6 @@ const TopicDetailPage: React.FC = () => {
   const restartButtonRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-
-  // Button refs array for navigation
-  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Audio URLs and current index
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
@@ -121,22 +118,10 @@ const TopicDetailPage: React.FC = () => {
   }, [classData, unitData, topic, user, classId, unitId, topicId]);
 
   useEffect(() => {
-    if (topic && introSpeechFinished && !loading) {
-      setFocusedIndex(1);
-      backButtonRef.current?.focus();
+    if (!loading && introSpeechFinished && topic) {
+      containerRef.current?.focus();
     }
-  }, [topic, introSpeechFinished, loading]);
-
-  // Initialize button refs array
-  useEffect(() => {
-    buttonRefs.current = [
-      backButtonRef.current,
-      playButtonRef.current,
-      rewindButtonRef.current,
-      forwardButtonRef.current,
-      restartButtonRef.current
-    ];
-  }, []);
+  }, [loading, introSpeechFinished, topic]);
 
   // Initialize audio URLs when topic loads
   useEffect(() => {
@@ -155,14 +140,6 @@ const TopicDetailPage: React.FC = () => {
       }
     }
   }, [topic]);
-
-  const generateAudioUrls = (topicId: string): string[] => {
-    // For MongoDB, we only have one audio URL
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://adimodtu.onrender.com/api' 
-      : 'http://localhost:5757/api';
-    return [`${baseUrl}/topics/${topicId}/audio`];
-  };
 
   // Audio event handlers
   const handlePlayPause = () => {
@@ -198,6 +175,7 @@ const TopicDetailPage: React.FC = () => {
 
   const loadAudioUrl = async (url: string, retryCount = 0) => {
     setIsAudioLoading(true);
+    setIsAudioReady(false);
     setAudioError('');
     
     try {
@@ -216,6 +194,7 @@ const TopicDetailPage: React.FC = () => {
         audioRef.current.onloadedmetadata = () => {
           setDuration(audioRef.current?.duration || 0);
           setIsAudioLoading(false);
+          setIsAudioReady(true);
         };
         
         audioRef.current.ontimeupdate = () => {
@@ -229,6 +208,7 @@ const TopicDetailPage: React.FC = () => {
         audioRef.current.onerror = () => {
           console.error('Audio element error');
           setIsAudioLoading(false);
+          setIsAudioReady(false);
           // Auto-retry up to 3 times
           if (retryCount < 3) {
             setTimeout(() => {
@@ -242,6 +222,7 @@ const TopicDetailPage: React.FC = () => {
     } catch (err) {
       console.error('Error loading audio from MongoDB:', err);
       setIsAudioLoading(false);
+      setIsAudioReady(false);
       // Auto-retry up to 3 times
       if (retryCount < 3) {
         setTimeout(() => {
@@ -253,8 +234,7 @@ const TopicDetailPage: React.FC = () => {
     }
   };
 
-
-  // Keyboard navigation handler
+  // Keyboard shortcuts handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!introSpeechFinished) return;
 
@@ -265,58 +245,20 @@ const TopicDetailPage: React.FC = () => {
         break;
       case ' ':
         e.preventDefault();
-        handlePlayPause();
+        if (isAudioReady) handlePlayPause();
         break;
       case 'r':
       case 'R':
         e.preventDefault();
-        handleRestart();
+        if (isAudioReady) handleRestart();
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        handleRewind();
+        if (isAudioReady) handleRewind();
         break;
       case 'ArrowRight':
         e.preventDefault();
-        handleForward();
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        const nextIndex = Math.min(focusedIndex + 1, buttonRefs.current.length - 1);
-        setFocusedIndex(nextIndex);
-        buttonRefs.current[nextIndex]?.focus();
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        const prevIndex = Math.max(focusedIndex - 1, 0);
-        setFocusedIndex(prevIndex);
-        buttonRefs.current[prevIndex]?.focus();
-        break;
-      case 'Enter':
-        e.preventDefault();
-        handleButtonAction(focusedIndex);
-        break;
-    }
-  };
-
-  
-
-  const handleButtonAction = (index: number) => {
-    switch (index) {
-      case 0:
-        handleBackClick();
-        break;
-      case 1:
-        handlePlayPause();
-        break;
-      case 2:
-        handleRewind();
-        break;
-      case 3:
-        handleForward();
-        break;
-      case 4:
-        handleRestart();
+        if (isAudioReady) handleForward();
         break;
     }
   };
@@ -365,6 +307,7 @@ const TopicDetailPage: React.FC = () => {
       maxWidth="lg"
       sx={{ mt: 4, mb: 4 }}
       onKeyDown={handleKeyDown}
+      onMouseDown={() => containerRef.current?.focus()}
       tabIndex={0}
       ref={containerRef}
     >
@@ -374,9 +317,6 @@ const TopicDetailPage: React.FC = () => {
         sx={{ 
           mb: 3,
           fontSize: '1.2rem',
-          '& .MuiBreadcrumbs-ol': {
-            fontSize: '1.2rem'
-          }
         }}
       >
         <Link
@@ -431,35 +371,24 @@ const TopicDetailPage: React.FC = () => {
           variant="h2" 
           component="h1" 
           ref={headerRef}
-          tabIndex={0}
+          tabIndex={-1}
           sx={{ 
             fontSize: '3rem',
             fontWeight: 'bold',
             color: 'primary.main',
-            cursor: 'pointer',
-            '&:focus': {
-              outline: '3px solid #2196f3',
-              outlineOffset: '5px',
-              borderRadius: '8px'
-            }
           }}
         >
-          {classData?.name} - {unitData?.title} - {topic.title}
+          {topic.title}
         </Typography>
         <Button 
           variant="contained" 
           color="secondary" 
           onClick={handleBackClick} 
           ref={backButtonRef}
-          tabIndex={0}
           sx={{ 
             fontSize: '1.5rem',
             padding: '1rem 2rem',
             minHeight: '60px',
-            '&:focus': {
-              outline: '3px solid #f50057',
-              outlineOffset: '5px'
-            }
           }}
         >
           <NavigateBefore sx={{ mr: 1 }} />
@@ -467,186 +396,118 @@ const TopicDetailPage: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Audio Player - Only show when topic data is loaded */}
-      {topic && (
-        <Card sx={{ p: 4, mb: 4 }}>
+      {/* Audio Player Card */}
+      <Card sx={{ p: 4, mb: 4 }}>
         <CardContent>
-          <Typography 
-            variant="h4" 
-            sx={{ 
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              mb: 3,
-              textAlign: 'center'
-            }}
-          >
-            Audio Player
-          </Typography>
-
-          {/* Hidden Audio Element */}
           <audio
             ref={audioRef}
             src={audioUrls[currentAudioUrlIndex] || ''}
             preload="metadata"
             style={{ display: 'none' }}
-            onError={() => setAudioError('Audio yüklenemedi')}
           />
 
-          {/* Audio Error Display */}
-          {audioError && (
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Alert 
-                severity="error" 
-                sx={{ fontSize: '1.1rem', mb: 2 }}
-              >
-                {audioError}
-              </Alert>
-            </Box>
-          )}
-
-          {/* Loading Indicator */}
           {isAudioLoading && (
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <CircularProgress size={40} sx={{ mr: 2 }} />
-              <Typography variant="body1" sx={{ display: 'inline' }}>
+            <Box sx={{ textAlign: 'center', my: 4 }}>
+              <CircularProgress size={50} sx={{ mr: 2 }} />
+              <Typography variant="h6" sx={{ display: 'inline' }}>
                 Ses yükleniyor...
               </Typography>
             </Box>
           )}
 
-          {/* Time Display */}
-          {!audioError && !isAudioLoading && (
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Typography variant="h6" sx={{ fontSize: '1.3rem', mb: 1 }}>
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </Typography>
-              {topic?.audio?.size && (
-                <Typography variant="body2" color="text.secondary">
-                  Dosya boyutu: {(topic.audio.size / (1024 * 1024)).toFixed(2)} MB
-                </Typography>
-              )}
+          {audioError && (
+            <Box sx={{ textAlign: 'center', my: 4 }}>
+              <Alert severity="error" sx={{ fontSize: '1.2rem' }}>
+                {audioError}
+              </Alert>
             </Box>
           )}
 
-          {/* Control Buttons */}
-          <Grid container spacing={3} justifyContent="center">
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
-              <Button
-                ref={rewindButtonRef}
-                variant="outlined"
-                size="large"
-                onClick={handleRewind}
-                fullWidth
-                disabled={!!audioError || isAudioLoading}
-                sx={{ 
-                  fontSize: '1.2rem',
-                  py: 2,
-                  minHeight: '80px',
-                  '&:focus': {
-                    outline: '3px solid #4caf50',
-                    outlineOffset: '5px'
-                  }
-                }}
-                tabIndex={0}
-              >
-                <FastRewind sx={{ mr: 1, fontSize: '2rem' }} />
-                Geri Sar
-              </Button>
-            </Grid>
-
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
-              <Button
-                ref={playButtonRef}
-                variant="contained"
-                color="primary"
-                size="large"
-                onClick={handlePlayPause}
-                fullWidth
-                disabled={!!audioError || isAudioLoading}
-                sx={{ 
-                  fontSize: '1.2rem',
-                  py: 2,
-                  minHeight: '80px',
-                  '&:focus': {
-                    outline: '3px solid #4caf50',
-                    outlineOffset: '5px'
-                  }
-                }}
-                tabIndex={0}
-              >
-                {isPlaying ? (
-                  <>
-                    <Pause sx={{ mr: 1, fontSize: '2rem' }} />
-                    Duraklat
-                  </>
-                ) : (
-                  <>
-                    <PlayArrow sx={{ mr: 1, fontSize: '2rem' }} />
-                    Oynat
-                  </>
+          {isAudioReady && !audioError && (
+            <>
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ fontSize: '1.5rem', mb: 1, fontWeight: 'bold' }}>
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </Typography>
+                {topic?.audio?.size && (
+                  <Typography variant="body1" color="text.secondary">
+                    Dosya boyutu: {(topic.audio.size / (1024 * 1024)).toFixed(2)} MB
+                  </Typography>
                 )}
-              </Button>
-            </Grid>
+              </Box>
 
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
-              <Button
-                ref={forwardButtonRef}
-                variant="outlined"
-                size="large"
-                onClick={handleForward}
-                fullWidth
-                disabled={!!audioError || isAudioLoading}
-                sx={{ 
-                  fontSize: '1.2rem',
-                  py: 2,
-                  minHeight: '80px',
-                  '&:focus': {
-                    outline: '3px solid #4caf50',
-                    outlineOffset: '5px'
-                  }
-                }}
-                tabIndex={0}
-              >
-                <FastForward sx={{ mr: 1, fontSize: '2rem' }} />
-                İleri Sar
-              </Button>
-            </Grid>
+              <Grid container spacing={3} justifyContent="center">
+                <Grid size={{xs:12, sm:6, md:3}} >
+                  <Button
+                    ref={rewindButtonRef}
+                    variant="outlined"
+                    size="large"
+                    onClick={handleRewind}
+                    fullWidth
+                    sx={{ fontSize: '1.2rem', py: 2, minHeight: '80px' }}
+                  >
+                    <FastRewind sx={{ mr: 1, fontSize: '2rem' }} />
+                    Geri Sar
+                  </Button>
+                </Grid>
 
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
-              <Button
-                ref={restartButtonRef}
-                variant="outlined"
-                color="secondary"
-                size="large"
-                onClick={handleRestart}
-                fullWidth
-                disabled={!!audioError || isAudioLoading}
-                sx={{ 
-                  fontSize: '1.2rem',
-                  py: 2,
-                  minHeight: '80px',
-                  '&:focus': {
-                    outline: '3px solid #4caf50',
-                    outlineOffset: '5px'
-                  }
-                }}
-                tabIndex={0}
-              >
-                <RestartAlt sx={{ mr: 1, fontSize: '2rem' }} />
-                Yeniden Başlat
-              </Button>
-            </Grid>
-          </Grid>
+                <Grid size={{xs:12, sm:6, md:3}} >
+                  <Button
+                    ref={playButtonRef}
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    onClick={handlePlayPause}
+                    fullWidth
+                    sx={{ fontSize: '1.2rem', py: 2, minHeight: '80px' }}
+                  >
+                    {isPlaying ? (
+                      <><Pause sx={{ mr: 1, fontSize: '2rem' }} /> Duraklat</>
+                    ) : (
+                      <><PlayArrow sx={{ mr: 1, fontSize: '2rem' }} /> Oynat</>
+                    )}
+                  </Button>
+                </Grid>
 
-          {/* Keyboard Shortcuts Info */}
-          <Box sx={{ textAlign: 'center', mt: 4 }}>
-            <Typography variant="body1" sx={{ fontSize: '1.1rem', color: 'text.secondary' }}>
-              Klavye Kısayolları: Boşluk (Oynat/Duraklat), R (Yeniden Başlat), Sol/Sağ Ok (Geri/İleri Sar), ESC (Geri Dön)
-            </Typography>
-          </Box>
+                <Grid size={{xs:12, sm:6, md:3}} >
+                  <Button
+                    ref={forwardButtonRef}
+                    variant="outlined"
+                    size="large"
+                    onClick={handleForward}
+                    fullWidth
+                    sx={{ fontSize: '1.2rem', py: 2, minHeight: '80px' }}
+                  >
+                    <FastForward sx={{ mr: 1, fontSize: '2rem' }} />
+                    İleri Sar
+                  </Button>
+                </Grid>
+
+                <Grid size={{xs:12, sm:6, md:3}} >
+                  <Button
+                    ref={restartButtonRef}
+                    variant="outlined"
+                    color="secondary"
+                    size="large"
+                    onClick={handleRestart}
+                    fullWidth
+                    sx={{ fontSize: '1.2rem', py: 2, minHeight: '80px' }}
+                  >
+                    <RestartAlt sx={{ mr: 1, fontSize: '2rem' }} />
+                    Yeniden Başlat
+                  </Button>
+                </Grid>
+              </Grid>
+
+              <Box sx={{ textAlign: 'center', mt: 4 }}>
+                <Typography variant="body1" sx={{ fontSize: '1.1rem', color: 'text.secondary' }}>
+                  Klavye Kısayolları: Boşluk (Oynat/Duraklat), R (Yeniden Başlat), Sol/Sağ Ok (Geri/İleri Sar), ESC (Geri Dön)
+                </Typography>
+              </Box>
+            </>
+          )}
         </CardContent>
-        </Card>
-      )}
+      </Card>
 
       {/* Topic Content */}
       {topic.content && (
@@ -654,23 +515,13 @@ const TopicDetailPage: React.FC = () => {
           <CardContent>
             <Typography 
               variant="h5" 
-              sx={{ 
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-                mb: 2,
-                color: 'primary.main'
-              }}
+              sx={{ fontSize: '1.5rem', fontWeight: 'bold', mb: 2, color: 'primary.main' }}
             >
               Konu İçeriği:
             </Typography>
             <Typography 
               variant="body1" 
-              sx={{ 
-                fontSize: '1.1rem',
-                lineHeight: 1.8,
-                whiteSpace: 'pre-wrap',
-                textAlign: 'justify'
-              }}
+              sx={{ fontSize: '1.2rem', lineHeight: 1.8, whiteSpace: 'pre-wrap', textAlign: 'justify' }}
             >
               {topic.content}
             </Typography>
@@ -681,4 +532,4 @@ const TopicDetailPage: React.FC = () => {
   );
 };
 
-export default TopicDetailPage; 
+export default TopicDetailPage;

@@ -9,7 +9,6 @@ const {
   updateTest,
   deleteTest,
   checkQuestionAnswer, 
-  completeTest,
   getQuestionAudio,
   getOptionAudio,
 } = require('../controllers/testController');
@@ -33,7 +32,7 @@ router.get('/:id', auth, getTestById);
 router.get('/:testId/questions/:questionId/audio/:audioType', auth, getQuestionAudio);
 router.get('/:testId/questions/:questionId/options/:optionId/audio', auth, getOptionAudio);
 router.post('/:testId/questions/:questionId/check', auth, checkQuestionAnswer);
-router.post('/:id/complete', auth, completeTest);
+// Completed test tracking removed
 
 module.exports = router;
 
