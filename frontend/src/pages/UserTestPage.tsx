@@ -504,7 +504,6 @@ const UserTestPage: React.FC = () => {
 
   const completeTest = async () => {
     try {
-      await api.post(`/tests/${testId}/complete`);
       audioManager.play('/sounds/submittest.mp3');
       // Navigate directly to tests page
       navigate(-1); // Go back to tests page
