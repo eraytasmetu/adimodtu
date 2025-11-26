@@ -12,11 +12,11 @@ import {
   Breadcrumbs,
   Link
 } from '@mui/material';
-import { 
-  PlayArrow, 
-  Pause, 
-  RestartAlt, 
-  FastRewind, 
+import {
+  PlayArrow,
+  Pause,
+  RestartAlt,
+  FastRewind,
   FastForward,
   NavigateBefore
 } from '@mui/icons-material';
@@ -98,7 +98,7 @@ const TopicDetailPage: React.FC = () => {
         // Konu bilgilerini al
         const topicRes = await api.get(`/topics/${topicId}`);
         setTopic(topicRes.data);
-        
+
       } catch (err) {
         setError('Konu yüklenirken bir hata oluştu.');
       } finally {
@@ -127,13 +127,13 @@ const TopicDetailPage: React.FC = () => {
   useEffect(() => {
     if (topic?._id) {
       // Create audio URL from MongoDB endpoint
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://adimodtu.onrender.com/api' 
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://adimodtu.onrender.com/api'
         : 'http://localhost:5757/api';
       const audioUrl = `${baseUrl}/topics/${topic._id}/audio`;
       setAudioUrls([audioUrl]);
       setCurrentAudioUrlIndex(0);
-      
+
       // Load audio
       if (audioUrl) {
         loadAudioUrl(audioUrl);
@@ -177,34 +177,34 @@ const TopicDetailPage: React.FC = () => {
     setIsAudioLoading(true);
     setIsAudioReady(false);
     setAudioError('');
-    
+
     try {
-      const response = await api.get(url, { 
+      const response = await api.get(url, {
         responseType: 'arraybuffer'
       });
-      
+
       const blob = new Blob([response.data], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(blob);
-      
+
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
         audioRef.current.load();
-        
+
         // Set up audio event listeners
         audioRef.current.onloadedmetadata = () => {
           setDuration(audioRef.current?.duration || 0);
           setIsAudioLoading(false);
           setIsAudioReady(true);
         };
-        
+
         audioRef.current.ontimeupdate = () => {
           setCurrentTime(audioRef.current?.currentTime || 0);
         };
-        
+
         audioRef.current.onended = () => {
           setIsPlaying(false);
         };
-        
+
         audioRef.current.onerror = () => {
           console.error('Audio element error');
           setIsAudioLoading(false);
@@ -312,9 +312,9 @@ const TopicDetailPage: React.FC = () => {
       ref={containerRef}
     >
       {/* Breadcrumb Navigation */}
-      <Breadcrumbs 
-        aria-label="breadcrumb" 
-        sx={{ 
+      <Breadcrumbs
+        aria-label="breadcrumb"
+        sx={{
           mb: 3,
           fontSize: '1.2rem',
         }}
@@ -323,7 +323,7 @@ const TopicDetailPage: React.FC = () => {
           component={RouterLink}
           to="/dashboard"
           color="inherit"
-          sx={{ 
+          sx={{
             fontSize: '1.2rem',
             textDecoration: 'none',
             '&:hover': {
@@ -337,7 +337,7 @@ const TopicDetailPage: React.FC = () => {
           component={RouterLink}
           to={`/class/${classId}`}
           color="inherit"
-          sx={{ 
+          sx={{
             fontSize: '1.2rem',
             textDecoration: 'none',
             '&:hover': {
@@ -351,7 +351,7 @@ const TopicDetailPage: React.FC = () => {
           component={RouterLink}
           to={`/topics/${classId}/${unitId}`}
           color="inherit"
-          sx={{ 
+          sx={{
             fontSize: '1.2rem',
             textDecoration: 'none',
             '&:hover': {
@@ -367,12 +367,12 @@ const TopicDetailPage: React.FC = () => {
       </Breadcrumbs>
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={6}>
-        <Typography 
-          variant="h2" 
-          component="h1" 
+        <Typography
+          variant="h2"
+          component="h1"
           ref={headerRef}
           tabIndex={-1}
-          sx={{ 
+          sx={{
             fontSize: '3rem',
             fontWeight: 'bold',
             color: 'primary.main',
@@ -380,12 +380,12 @@ const TopicDetailPage: React.FC = () => {
         >
           {topic.title}
         </Typography>
-        <Button 
-          variant="contained" 
-          color="secondary" 
-          onClick={handleBackClick} 
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleBackClick}
           ref={backButtonRef}
-          sx={{ 
+          sx={{
             fontSize: '1.5rem',
             padding: '1rem 2rem',
             minHeight: '60px',
@@ -437,7 +437,7 @@ const TopicDetailPage: React.FC = () => {
               </Box>
 
               <Grid container spacing={3} justifyContent="center">
-                <Grid size={{xs:12, sm:6, md:3}} >
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} >
                   <Button
                     ref={rewindButtonRef}
                     variant="outlined"
@@ -451,7 +451,7 @@ const TopicDetailPage: React.FC = () => {
                   </Button>
                 </Grid>
 
-                <Grid size={{xs:12, sm:6, md:3}} >
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} >
                   <Button
                     ref={playButtonRef}
                     variant="contained"
@@ -469,7 +469,7 @@ const TopicDetailPage: React.FC = () => {
                   </Button>
                 </Grid>
 
-                <Grid size={{xs:12, sm:6, md:3}} >
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} >
                   <Button
                     ref={forwardButtonRef}
                     variant="outlined"
@@ -483,7 +483,7 @@ const TopicDetailPage: React.FC = () => {
                   </Button>
                 </Grid>
 
-                <Grid size={{xs:12, sm:6, md:3}} >
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} >
                   <Button
                     ref={restartButtonRef}
                     variant="outlined"
@@ -513,14 +513,14 @@ const TopicDetailPage: React.FC = () => {
       {topic.content && (
         <Card sx={{ mb: 4, p: 3 }}>
           <CardContent>
-            <Typography 
-              variant="h5" 
+            <Typography
+              variant="h5"
               sx={{ fontSize: '1.5rem', fontWeight: 'bold', mb: 2, color: 'primary.main' }}
             >
               Konu İçeriği:
             </Typography>
-            <Typography 
-              variant="body1" 
+            <Typography
+              variant="body1"
               sx={{ fontSize: '1.2rem', lineHeight: 1.8, whiteSpace: 'pre-wrap', textAlign: 'justify' }}
             >
               {topic.content}

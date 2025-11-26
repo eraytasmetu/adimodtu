@@ -12,11 +12,11 @@ import {
   IconButton,
   Chip
 } from '@mui/material';
-import { 
-  PlayArrow, 
-  Pause, 
-  Stop, 
-  ArrowBack, 
+import {
+  PlayArrow,
+  Pause,
+  Stop,
+  ArrowBack,
   ArrowForward,
   VolumeUp,
   CheckCircle,
@@ -115,7 +115,7 @@ const UserTestPage: React.FC = () => {
       if (audioRequestAbortController.current) {
         audioRequestAbortController.current.abort();
       }
-      
+
       if (audioRef.current && audioRef.current.src && audioRef.current.src.startsWith('blob:')) {
         URL.revokeObjectURL(audioRef.current.src);
       }
@@ -136,7 +136,7 @@ const UserTestPage: React.FC = () => {
       }
       setAnswerResult(null);
       setShowSolution(false);
-      
+
       // Auto-play question audio when question loads and focus the question
       if (currentQuestion.hasQuestionAudio) {
         setTimeout(() => {
@@ -165,7 +165,7 @@ const UserTestPage: React.FC = () => {
       if (audioRequestAbortController.current) {
         audioRequestAbortController.current.abort();
       }
-      
+
       // Stop current audio if playing
       if (audioRef.current) {
         audioRef.current.pause();
@@ -175,43 +175,43 @@ const UserTestPage: React.FC = () => {
         }
         audioRef.current.src = '';
       }
-      
+
       setIsLoadingAudio(true);
       setIsPlayingAudio(false); // Don't set to true until we're sure it's playing
       setCurrentAudioType(type);
-      
+
       // Create new abort controller for this request
       const abortController = new AbortController();
       audioRequestAbortController.current = abortController;
-      
+
       // Fetch audio with authentication token
       const response = await api.get(url, {
         responseType: 'blob',
         signal: abortController.signal
       });
-      
+
       // Check if request was aborted
       if (abortController.signal.aborted) {
         return;
       }
-      
+
       // Create blob URL
       const blob = new Blob([response.data], { type: response.headers['content-type'] || 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(blob);
-      
+
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
-      
+
       // Set up event handlers before attempting to play
       let hasStartedPlaying = false;
       let hasErrored = false;
-      
+
       audio.onplay = () => {
         hasStartedPlaying = true;
         setIsPlayingAudio(true);
         setIsLoadingAudio(false);
       };
-      
+
       audio.onended = () => {
         setIsPlayingAudio(false);
         setCurrentAudioType('');
@@ -219,7 +219,7 @@ const UserTestPage: React.FC = () => {
         URL.revokeObjectURL(audioUrl);
         audioRequestAbortController.current = null;
       };
-      
+
       audio.onerror = (e) => {
         hasErrored = true;
         setIsPlayingAudio(false);
@@ -229,7 +229,7 @@ const UserTestPage: React.FC = () => {
         audioRequestAbortController.current = null;
         // Error handled silently - no text-to-speech
       };
-      
+
       // Wait a bit for audio to be ready, then try to play
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -237,18 +237,18 @@ const UserTestPage: React.FC = () => {
             reject(new Error('Audio loading timeout'));
           }
         }, 5000); // 5 second timeout
-        
+
         audio.oncanplaythrough = () => {
           clearTimeout(timeout);
           resolve(true);
         };
-        
+
         audio.onerror = () => {
           clearTimeout(timeout);
           reject(new Error('Audio failed to load'));
         };
       });
-      
+
       // Try to play the audio
       try {
         await audio.play();
@@ -256,18 +256,18 @@ const UserTestPage: React.FC = () => {
         // Error handled silently - no text-to-speech
         throw playError;
       }
-      
+
     } catch (err: any) {
       // Check if error is due to request abortion
       if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
         return; // Don't show error for aborted requests
       }
-      
+
       setIsPlayingAudio(false);
       setCurrentAudioType('');
       setIsLoadingAudio(false);
       audioRequestAbortController.current = null;
-      
+
       // Error handled silently - no text-to-speech
     }
   };
@@ -275,8 +275,8 @@ const UserTestPage: React.FC = () => {
   const playQuestionAudio = () => {
     if (!test) return;
     const currentQuestion = test.questions[currentQuestionIndex];
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://adimodtu.onrender.com/api' 
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://adimodtu.onrender.com/api'
       : 'http://localhost:5757/api';
     const audioUrl = `${baseUrl}/tests/${testId}/questions/${currentQuestion._id}/audio/question`;
     playAudio(audioUrl, 'question');
@@ -286,8 +286,8 @@ const UserTestPage: React.FC = () => {
     if (!test) return;
     const currentQuestion = test.questions[currentQuestionIndex];
     const option = currentQuestion.options[optionIndex];
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://adimodtu.onrender.com/api' 
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://adimodtu.onrender.com/api'
       : 'http://localhost:5757/api';
     const audioUrl = `${baseUrl}/tests/${testId}/questions/${currentQuestion._id}/options/${option._id}/audio`;
     playAudio(audioUrl, `option-${optionIndex}`);
@@ -296,8 +296,8 @@ const UserTestPage: React.FC = () => {
   const playSolutionAudio = () => {
     if (!test) return;
     const currentQuestion = test.questions[currentQuestionIndex];
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://adimodtu.onrender.com/api' 
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://adimodtu.onrender.com/api'
       : 'http://localhost:5757/api';
     const audioUrl = `${baseUrl}/tests/${testId}/questions/${currentQuestion._id}/audio/solution`;
     playAudio(audioUrl, 'solution');
@@ -309,7 +309,7 @@ const UserTestPage: React.FC = () => {
       audioRequestAbortController.current.abort();
       audioRequestAbortController.current = null;
     }
-    
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -326,7 +326,7 @@ const UserTestPage: React.FC = () => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!test) return;
-    
+
     // Disable keyboard navigation while audio is playing
     if (isPlayingAudio || isLoadingAudio) {
       // Only allow space to stop audio and escape to exit
@@ -339,45 +339,45 @@ const UserTestPage: React.FC = () => {
       }
       return;
     }
-    
+
     const currentQuestion = test.questions[currentQuestionIndex];
-    
+
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
         const prevOptionIndex = Math.max(focusedOptionIndex - 1, -1);
         setFocusedOptionIndex(prevOptionIndex);
         if (prevOptionIndex === -1) {
-            questionTextRef.current?.focus();
+          questionTextRef.current?.focus();
         } else if (prevOptionIndex < currentQuestion.options.length) {
-            optionRefs.current[prevOptionIndex]?.focus();
-            if (currentQuestion.options[prevOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
-              playOptionAudio(prevOptionIndex);
-            }
+          optionRefs.current[prevOptionIndex]?.focus();
+          if (currentQuestion.options[prevOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
+            playOptionAudio(prevOptionIndex);
+          }
         } else if (prevOptionIndex === currentQuestion.options.length) {
-            submitButtonRef.current?.focus();
+          submitButtonRef.current?.focus();
         }
         break;
-        
+
       case 'ArrowDown':
         e.preventDefault();
-        const maxIndex = answerResult && (currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio) 
-          ? currentQuestion.options.length + 1 
+        const maxIndex = answerResult && (currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio)
+          ? currentQuestion.options.length + 1
           : currentQuestion.options.length;
         const nextOptionIndex = Math.min(focusedOptionIndex + 1, maxIndex);
         setFocusedOptionIndex(nextOptionIndex);
         if (nextOptionIndex < currentQuestion.options.length) {
-            optionRefs.current[nextOptionIndex]?.focus();
-            if (currentQuestion.options[nextOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
-                playOptionAudio(nextOptionIndex);
-            }
+          optionRefs.current[nextOptionIndex]?.focus();
+          if (currentQuestion.options[nextOptionIndex].hasAudio && !isLoadingAudio && !isPlayingAudio) {
+            playOptionAudio(nextOptionIndex);
+          }
         } else if (nextOptionIndex === currentQuestion.options.length) {
-            submitButtonRef.current?.focus();
+          submitButtonRef.current?.focus();
         } else if (nextOptionIndex === currentQuestion.options.length + 1 && answerResult && (currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio)) {
-            solutionButtonRef.current?.focus();
+          solutionButtonRef.current?.focus();
         }
         break;
-        
+
       case 'Enter':
       case ' ':
         e.preventDefault();
@@ -394,7 +394,7 @@ const UserTestPage: React.FC = () => {
           }
         }
         break;
-        
+
       case 'r':
       case 'R':
         e.preventDefault();
@@ -402,14 +402,14 @@ const UserTestPage: React.FC = () => {
           playQuestionAudio();
         }
         break;
-        
+
       case 'ArrowLeft':
         e.preventDefault();
         if (currentQuestionIndex > 0) {
           goToPreviousQuestion();
         }
         break;
-        
+
       case 'ArrowRight':
         e.preventDefault();
         if (currentQuestionIndex < test.questions.length - 1) {
@@ -419,7 +419,7 @@ const UserTestPage: React.FC = () => {
           setShowTestCompletionScreen(true);
         }
         break;
-        
+
       case 'Escape':
         e.preventDefault();
         navigate(-1);
@@ -441,20 +441,20 @@ const UserTestPage: React.FC = () => {
 
   const submitAnswer = async () => {
     if (!selectedAnswer || !test) return;
-    
+
     try {
       const currentQuestion = test.questions[currentQuestionIndex];
       const response = await api.post(
         `/tests/${testId}/questions/${currentQuestion._id}/check`,
         { userAnswer: selectedAnswer }
       );
-      
+
       setAnswerResult(response.data);
       setUserAnswers(prev => ({
         ...prev,
         [currentQuestion._id]: selectedAnswer
       }));
-      
+
       // Announce result and then focus solution button
       const resultCallback = () => {
         // After result is announced, focus solution button and announce it
@@ -473,7 +473,7 @@ const UserTestPage: React.FC = () => {
           // Play appropriate incorrect answer audio based on correct answer
           const correctAnswer = response.data.correctAnswer.toLowerCase();
           let audioFile = '/sounds/falsecorrectanswera.mp3'; // default
-          
+
           if (correctAnswer === 'a') {
             audioFile = '/sounds/falsecorrectanswera.mp3';
           } else if (correctAnswer === 'b') {
@@ -483,7 +483,7 @@ const UserTestPage: React.FC = () => {
           } else if (correctAnswer === 'd') {
             audioFile = '/sounds/falsecorrectanswerd.mp3';
           }
-          
+
           audioManager.play(audioFile, resultCallback);
         } else {
           audioManager.play('/sounds/correctanswer.mp3', resultCallback);
@@ -531,9 +531,9 @@ const UserTestPage: React.FC = () => {
         <Alert severity="error" sx={{ fontSize: '1.3rem', padding: '1rem' }}>
           {error || 'Test bulunamadı'}
         </Alert>
-        <Button 
-          onClick={() => navigate(-1)} 
-          variant="contained" 
+        <Button
+          onClick={() => navigate(-1)}
+          variant="contained"
           sx={{ mt: 2, fontSize: '1.2rem', padding: '1rem 2rem' }}
         >
           Geri Dön
@@ -545,7 +545,7 @@ const UserTestPage: React.FC = () => {
 
   if (showTestCompletionScreen) {
     return (
-      <Container 
+      <Container
         maxWidth="md"
         onKeyDown={(e) => {
           if (e.key === 'ArrowLeft') {
@@ -608,15 +608,15 @@ const UserTestPage: React.FC = () => {
         <Typography variant="h3" component="h1" sx={{ mb: 2, fontSize: '2.5rem' }}>
           {test.title}
         </Typography>
-        
+
         {/* Progress */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
             Soru {currentQuestionIndex + 1} / {test.questions.length}
           </Typography>
-          <LinearProgress 
-            variant="determinate" 
-            value={progress} 
+          <LinearProgress
+            variant="determinate"
+            value={progress}
             sx={{ height: 10, borderRadius: 5 }}
           />
         </Box>
@@ -630,11 +630,11 @@ const UserTestPage: React.FC = () => {
             <Typography variant="h5" component="h2" sx={{ mb: 2, fontSize: '1.8rem' }}>
               Soru {currentQuestionIndex + 1}
             </Typography>
-            
+
             <Typography ref={questionTextRef} tabIndex={-1} variant="h6" sx={{ mb: 2, fontSize: '1.4rem', lineHeight: 1.6, '&:focus': { outline: 'none' } }}>
               {currentQuestion.text}
             </Typography>
-            
+
             {/* Question Audio Controls */}
             {currentQuestion.hasQuestionAudio && (
               <Box sx={{ mb: 2 }}>
@@ -663,7 +663,7 @@ const UserTestPage: React.FC = () => {
             <Typography variant="h6" sx={{ mb: 2, fontSize: '1.3rem' }}>
               Seçenekler:
             </Typography>
-            
+
             {currentQuestion.options.map((option, index) => (
               <Button
                 key={option._id}
@@ -733,7 +733,7 @@ const UserTestPage: React.FC = () => {
           {/* Answer Result */}
           {answerResult && (
             <Box sx={{ mb: 3 }}>
-              <Alert 
+              <Alert
                 severity={answerResult.isCorrect ? "success" : "error"}
                 sx={{ fontSize: '1.2rem', padding: '1rem' }}
               >
@@ -744,7 +744,7 @@ const UserTestPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Alert>
-              
+
               {/* Solution */}
               {(currentQuestion.hasSolutionText || currentQuestion.hasSolutionAudio) && (
                 <Button
@@ -764,7 +764,7 @@ const UserTestPage: React.FC = () => {
                   Çözümü Dinle/Gör
                 </Button>
               )}
-              
+
               {showSolution && currentQuestion.hasSolutionText && (
                 <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
                   <Typography variant="h6" sx={{ mb: 1 }}>
@@ -791,7 +791,7 @@ const UserTestPage: React.FC = () => {
         >
           Önceki Soru
         </Button>
-        
+
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="outlined"
@@ -800,7 +800,7 @@ const UserTestPage: React.FC = () => {
           >
             Testten Çık
           </Button>
-          
+
           {isPlayingAudio && (
             <Button
               variant="outlined"
@@ -813,7 +813,7 @@ const UserTestPage: React.FC = () => {
             </Button>
           )}
         </Box>
-        
+
         <Button
           variant="outlined"
           onClick={goToNextQuestion}
@@ -831,7 +831,7 @@ const UserTestPage: React.FC = () => {
           Klavye Kısayolları:
         </Typography>
         <Typography sx={{ fontSize: '1rem' }}>
-          ↑↓ Seçenekler arası gezinme | Enter: Seçenek seçme | R: Soruyu tekrar dinleme | 
+          ↑↓ Seçenekler arası gezinme | Enter: Seçenek seçme | R: Soruyu tekrar dinleme |
           ←→ Sorular arası gezinme | Space: Audio durdurma | Esc: Çıkış
         </Typography>
       </Box>

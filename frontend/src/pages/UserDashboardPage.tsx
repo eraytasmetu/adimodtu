@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Container,
   Box,
   Typography,
   Grid,
@@ -9,13 +8,14 @@ import {
   CardActionArea,
   CircularProgress,
   Alert,
-  Button
+  Button,
+  useTheme
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
-// speak kaldırıldı: bu sayfada sabit ses dosyaları kullanılacak
 import audioManager from '../utils/audioManager';
+import Layout from '../components/Layout';
 
 // Sınıf verisi için bir tip arayüzü tanımlayalım
 interface ClassData {
@@ -24,8 +24,9 @@ interface ClassData {
 }
 
 const UserDashboardPage: React.FC = () => {
-  const { user, progress, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -34,7 +35,6 @@ const UserDashboardPage: React.FC = () => {
   const [introSpeechFinished, setIntroSpeechFinished] = useState<boolean>(false);
 
   // Sınıf sesleri için yardımcı fonksiyon
-
   const getClassAudioPath = (className: string): string | null => {
     // Örn: "5. Sınıf" → "/sounds/5sinif.mp3"
     if (!className) return null;
@@ -57,12 +57,12 @@ const UserDashboardPage: React.FC = () => {
   const playClassAudio = (className: string) => {
     const src = getClassAudioPath(className);
     if (!src) return;
-    audioManager.play(src).catch(() => {});
+    audioManager.play(src).catch(() => { });
   };
 
   // Refs for keyboard navigation
-  const headerRef = useRef<HTMLHeadingElement>(null);
   const logoutButtonRef = useRef<HTMLButtonElement>(null);
+  const adminButtonRef = useRef<HTMLButtonElement>(null);
   const classRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +97,8 @@ const UserDashboardPage: React.FC = () => {
 
   useEffect(() => {
     if (classes.length > 0 && introSpeechFinished && !loading) {
-      setFocusedIndex(2);
+      // Start focus on the first class card by default
+      setFocusedIndex(0);
       classRefs.current[0]?.focus();
       playClassAudio(classes[0].name);
     }
@@ -105,219 +106,154 @@ const UserDashboardPage: React.FC = () => {
 
   // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    const totalElements = classes.length + 2; // +2 for header and logout button
-    
-    if (e.key === 'ArrowDown') {
+    // Navigation items: [Classes...] -> Admin Button (if admin) -> Logout Button
+    const isAdmin = user?.role === 'admin';
+    const classCount = classes.length;
+    const totalElements = classCount + (isAdmin ? 2 : 1);
+
+    // Index mapping:
+    // 0 to classCount-1: Classes
+    // classCount: Admin Button (if exists) OR Logout Button
+    // classCount+1: Logout Button (if admin)
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       e.preventDefault();
-      e.stopPropagation();
-      let nextIndex = Math.min(focusedIndex + 1, totalElements - 1);
-      // Header'ı atla
-      if (nextIndex === 1) nextIndex = Math.min(2, totalElements - 1);
+      const nextIndex = (focusedIndex + 1) % totalElements;
       setFocusedIndex(nextIndex);
-      
-      if (nextIndex === 0) {
-        logoutButtonRef.current?.focus();
-      } else if (nextIndex === 1) {
-        headerRef.current?.focus();
-      } else {
-        const classIndex = nextIndex - 2;
-        classRefs.current[classIndex]?.focus();
-        playClassAudio(classes[classIndex].name);
-      }
+      focusElement(nextIndex, classCount, isAdmin);
     }
-    
-    if (e.key === 'ArrowUp') {
+
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      e.stopPropagation();
-      let prevIndex = Math.max(focusedIndex - 1, 0);
-      // Header'ı atla
-      if (prevIndex === 1) prevIndex = 0;
+      const prevIndex = (focusedIndex - 1 + totalElements) % totalElements;
       setFocusedIndex(prevIndex);
-      
-      if (prevIndex === 0) {
-        logoutButtonRef.current?.focus();
-      } else if (prevIndex === 1) {
-        headerRef.current?.focus();
-      } else {
-        const classIndex = prevIndex - 2;
-        classRefs.current[classIndex]?.focus();
-        playClassAudio(classes[classIndex].name);
-      }
+      focusElement(prevIndex, classCount, isAdmin);
     }
-    
+
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (focusedIndex === 0) {
+      if (focusedIndex < classCount) {
+        handleClassClick(classes[focusedIndex]._id, classes[focusedIndex].name);
+      } else if (isAdmin && focusedIndex === classCount) {
+        navigate('/admin/dashboard');
+      } else {
         handleLogout();
-      } else if (focusedIndex >= 2) {
-        const classIndex = focusedIndex - 2;
-        handleClassClick(classes[classIndex]._id, classes[classIndex].name);
       }
+    }
+  };
+
+  const focusElement = (index: number, classCount: number, isAdmin: boolean) => {
+    if (index < classCount) {
+      classRefs.current[index]?.focus();
+      playClassAudio(classes[index].name);
+    } else if (isAdmin && index === classCount) {
+      adminButtonRef.current?.focus();
+    } else {
+      logoutButtonRef.current?.focus();
     }
   };
 
   const handleClassClick = (classId: string, className: string) => {
     navigate(`/class/${classId}`);
   };
-  
+
   const handleLogout = () => {
     logout();
   }
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress size={80} />
-      </Box>
+      <Layout>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress size={80} color="secondary" />
+        </Box>
+      </Layout>
     );
   }
 
   return (
-    <Container
-      maxWidth="lg"
-      sx={{ mt: 4, mb: 4 }}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-      ref={containerRef}
-    >
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography 
-          ref={headerRef}
-          variant="h2" 
-          component="h1"
-          sx={{ 
-            fontSize: '3rem',
-            fontWeight: 'bold',
-            mb: 3,
-            color: 'primary.main'
-          }}
-          tabIndex={0}
-          onKeyDown={() => {}}
-          onMouseEnter={() => {}}
-        >
-          Sınıflar
-        </Typography>
-        
-        {user?.role === 'admin' && (
-          <Button
-            variant="contained" 
-            color="primary" 
-            onClick={() => navigate('/admin/dashboard')}
-            sx={{ 
-              fontSize: '1.5rem',
-              padding: '1rem 2rem',
-              minHeight: '60px',
-              mr: 2,
-            }}
-          onMouseEnter={() => {}}
-          >
-            Admin Paneli
-          </Button>
+    <Layout title="Sınıflar">
+      <Box
+        onKeyDown={handleKeyDown}
+        sx={{ outline: 'none' }}
+      >
+        {error && (
+          <Alert severity="error" sx={{ mb: 4, fontSize: '1.2rem' }}>
+            {error}
+          </Alert>
         )}
-        
-        <Button 
-          variant="contained" 
-          color="secondary" 
-          onClick={handleLogout} 
-          ref={logoutButtonRef}
-          tabIndex={0}
-          sx={{ 
-            fontSize: '1.5rem',
-            padding: '1rem 2rem',
-            minHeight: '60px',
-            '&:focus': {
-              outline: '3px solid #f50057',
-              outlineOffset: '5px'
-            }
-          }}
-          onMouseEnter={() => {}}
-        >
-          Çıkış Yap
-        </Button>
-      </Box>
-      
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            fontSize: '1.3rem',
-            padding: '1rem',
-            mb: 4
-          }}
-        >
-          {error}
-        </Alert>
-      )}
 
-      {/* Progress Summary */}
-      {false && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-            İlerleme Durumunuz
-          </Typography>
-          <Grid container spacing={2}>
-            
-            
-          </Grid>
-        </Box>
-      )}
-
-      <Grid container spacing={6}>
-        {classes.map((classItem, index) => (
-          <Grid size={{xs : 12}} key={classItem._id}>
-            <Card
-              ref={(el) => {
-                classRefs.current[index] = el;
-              }}
-              tabIndex={0}
-              sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                minHeight: '200px',
-                fontSize: '1.3rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                margin: '1rem',
-                '&:hover': {
-                  transform: 'scale(1.02)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.15)'
-                },
-                '&:focus': {
-                  outline: '3px solid #4caf50',
-                  outlineOffset: '5px',
-                  transform: 'scale(1.02)'
-                }
-              }}
-              onMouseEnter={() => playClassAudio(classItem.name)}
-            >
-              <CardActionArea
-                onClick={() => handleClassClick(classItem._id, classItem.name)}
-                sx={{ 
-                  flexGrow: 1,
-                  padding: '1.5rem'
+        <Grid container spacing={4}>
+          {classes.map((classItem, index) => (
+            <Grid size={{ xs: 12 }} key={classItem._id}>
+              <Card
+                ref={(el) => {
+                  classRefs.current[index] = el;
                 }}
+                tabIndex={0}
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: '220px',
+                  cursor: 'pointer',
+                  // Focus styles are handled globally in index.css
+                }}
+                onMouseEnter={() => playClassAudio(classItem.name)}
+                onClick={() => handleClassClick(classItem._id, classItem.name)}
               >
-                <CardContent sx={{ padding: '1.5rem' }}>
-                  <Typography 
-                    gutterBottom 
-                    variant="h4" 
-                    component="h2"
-                    sx={{ 
-                      fontSize: '2rem',
-                      fontWeight: 'bold',
-                      mb: 2
-                    }}
-                  >
-                    {classItem.name}
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Container>
+                <CardActionArea sx={{ flexGrow: 1, height: '100%', p: 2 }}>
+                  <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                    <Typography
+                      variant="h4"
+                      component="h2"
+                      align="center"
+                      sx={{
+                        fontWeight: 'bold',
+                        color: theme.palette.primary.light,
+                        textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                      }}
+                    >
+                      {classItem.name}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Box sx={{ mt: 6, display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
+          {user?.role === 'admin' && (
+            <Button
+              ref={adminButtonRef}
+              variant="contained"
+              color="primary"
+              onClick={() => navigate('/admin/dashboard')}
+              tabIndex={0}
+              sx={{ minWidth: '200px' }}
+            >
+              Admin Paneli
+            </Button>
+          )}
+
+          <Button
+            ref={logoutButtonRef}
+            variant="outlined"
+            color="error"
+            onClick={handleLogout}
+            tabIndex={0}
+            sx={{
+              minWidth: '200px',
+              borderWidth: 2,
+              '&:hover': { borderWidth: 2 }
+            }}
+          >
+            Çıkış Yap
+          </Button>
+        </Box>
+      </Box>
+    </Layout>
   );
 };
 

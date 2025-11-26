@@ -6,7 +6,7 @@ const {
   registerUser,
   loginUser,
   getUserProfile,
-  
+
 } = require('../controllers/userController');
 
 router.post('/register', registerUser);

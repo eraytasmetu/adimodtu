@@ -14,6 +14,7 @@ import {
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import audioManager from '../utils/audioManager';
+import Layout from '../components/Layout';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const RegisterPage: React.FC = () => {
       if (field === 'link') buttonRef.current?.focus();
     }
   };
-  
+
   useEffect(() => {
     audioManager.play('/sounds/register.mp3');
   }, []);
@@ -65,7 +66,7 @@ const RegisterPage: React.FC = () => {
       setError(errorMessage);
       return;
     }
-    
+
     setLoading(true);
 
     try {
@@ -77,7 +78,7 @@ const RegisterPage: React.FC = () => {
 
       setLoading(false);
       await login(response.data.token, response.data.user); // Merkezi login fonksiyonunu kullan
-      
+
       // Check if user is admin and redirect accordingly
       if (response.data.user && response.data.user.role === 'admin') {
         navigate('/admin/dashboard');
@@ -93,95 +94,102 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Typography component="h1" variant="h4" gutterBottom>
-          Hesap Oluştur
-        </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="name"
-            label="Adınız Soyadınız"
-            name="name"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            inputRef={nameRef}
-            onKeyDown={(e) => handleKeyDown(e, 'name')}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="email"
-            label="E-posta Adresiniz"
-            name="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            inputRef={emailRef}
-            onKeyDown={(e) => handleKeyDown(e, 'email')}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label="Şifreniz"
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            inputRef={passwordRef}
-            onKeyDown={(e) => handleKeyDown(e, 'password')}
-          />
-           <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="confirmPassword"
-            label="Şifrenizi Tekrar Girin"
-            type="password"
-            id="confirmPassword"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            inputRef={confirmPasswordRef}
-            onKeyDown={(e) => handleKeyDown(e, 'confirm')}
-          />
-          {error && (
-            <Alert severity="error" role="alert" aria-live="assertive" sx={{ mt: 2, width: '100%' }}>
-              {error}
-            </Alert>
-          )}
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ mt: 3, mb: 2, py: 1.5 }}
-            disabled={loading}
-            ref={buttonRef}
-            onKeyDown={(e) => handleKeyDown(e, 'button')}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : 'Kayıt Ol'}
-          </Button>
-          <Grid container justifyContent="flex-end">
-            <Grid>
-              <Link
-                component={RouterLink}
-                to="/login"
-                variant="body2"
-                ref={loginLinkRef}
-                onKeyDown={(e: React.KeyboardEvent<HTMLAnchorElement>) => handleKeyDown(e, 'link')}
-              >
-                Zaten bir hesabın var mı? Giriş Yap
-              </Link>
+    <Layout>
+      <Container component="main" maxWidth="xs">
+        <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Typography component="h1" variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            Hesap Oluştur
+          </Typography>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="name"
+              label="Adınız Soyadınız"
+              name="name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              inputRef={nameRef}
+              onKeyDown={(e) => handleKeyDown(e, 'name')}
+              variant="outlined"
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="E-posta Adresiniz"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              inputRef={emailRef}
+              onKeyDown={(e) => handleKeyDown(e, 'email')}
+              variant="outlined"
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Şifreniz"
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              inputRef={passwordRef}
+              onKeyDown={(e) => handleKeyDown(e, 'password')}
+              variant="outlined"
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="confirmPassword"
+              label="Şifrenizi Tekrar Girin"
+              type="password"
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              inputRef={confirmPasswordRef}
+              onKeyDown={(e) => handleKeyDown(e, 'confirm')}
+              variant="outlined"
+            />
+            {error && (
+              <Alert severity="error" role="alert" aria-live="assertive" sx={{ mt: 2, width: '100%' }}>
+                {error}
+              </Alert>
+            )}
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1.2rem' }}
+              disabled={loading}
+              ref={buttonRef}
+              onKeyDown={(e) => handleKeyDown(e, 'button')}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Kayıt Ol'}
+            </Button>
+            <Grid container justifyContent="flex-end">
+              <Grid>
+                <Link
+                  component={RouterLink}
+                  to="/login"
+                  variant="body2"
+                  ref={loginLinkRef}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLAnchorElement>) => handleKeyDown(e, 'link')}
+                  sx={{ color: 'secondary.main', fontWeight: 'bold' }}
+                >
+                  Zaten bir hesabın var mı? Giriş Yap
+                </Link>
+              </Grid>
             </Grid>
-          </Grid>
+          </Box>
         </Box>
-      </Box>
-    </Container>
+      </Container>
+    </Layout>
   );
 };
 

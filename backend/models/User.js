@@ -4,12 +4,12 @@ const Schema = mongoose.Schema;
 const UserSchema = new Schema({
   name: {
     type: String,
-    required: true, 
+    required: true,
   },
   email: {
     type: String,
     required: true,
-    unique: true, 
+    unique: true,
   },
   password: {
     type: String,
@@ -17,26 +17,26 @@ const UserSchema = new Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'], 
-    default: 'user', 
+    enum: ['user', 'admin'],
+    default: 'user',
   },
   completedUnits: [
     {
       type: Schema.Types.ObjectId,
-      ref: 'unit', 
+      ref: 'unit',
     },
   ],
-  
+
 
   lastActivity: {
     activityType: {
       type: String,
-      enum: ['Topic', 'Test', null], 
+      enum: ['Topic', 'Test', null],
       default: null,
     },
     activityId: {
       type: Schema.Types.ObjectId,
-      refPath: 'lastActivity.activityType', 
+      refPath: 'lastActivity.activityType',
       default: null,
     },
   },
