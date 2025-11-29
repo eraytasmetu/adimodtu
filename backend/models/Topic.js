@@ -28,6 +28,24 @@ const TopicSchema = new Schema({
       required: true,
     }
   },
+  titleAudio: {
+    data: {
+      type: Buffer,
+      required: false,
+    },
+    contentType: {
+      type: String,
+      required: false,
+    },
+    filename: {
+      type: String,
+      required: false,
+    },
+    size: {
+      type: Number,
+      required: false,
+    }
+  },
   unit: {
     type: Schema.Types.ObjectId,
     ref: 'Unit',

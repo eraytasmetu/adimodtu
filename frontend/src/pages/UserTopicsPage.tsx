@@ -27,6 +27,7 @@ interface TopicData {
   hasAudio: boolean;
   audioSize?: number;
   audioFilename?: string;
+  hasTitleAudio?: boolean;
 }
 
 // Sınıf verisi için tip arayüzü
@@ -59,6 +60,7 @@ const UserTopicsPage: React.FC = () => {
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const topicRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const titleAudioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,7 +76,7 @@ const UserTopicsPage: React.FC = () => {
         // Konuları al
         const topicsRes = await api.get(`/topics?unit=${unitId}`);
         setTopics(topicsRes.data);
-        
+
         // Initialize refs array
         topicRefs.current = new Array(topicsRes.data.length).fill(null);
       } catch (err) {
@@ -92,8 +94,34 @@ const UserTopicsPage: React.FC = () => {
 
     return () => {
       audioManager.stop();
+      if (titleAudioRef.current) {
+        titleAudioRef.current.pause();
+        titleAudioRef.current.currentTime = 0;
+      }
     };
   }, [user, classId, unitId]);
+
+  const playTopicTitle = (topic: TopicData) => {
+    // Stop any existing speech or audio
+    window.speechSynthesis.cancel();
+    if (titleAudioRef.current) {
+      titleAudioRef.current.pause();
+      titleAudioRef.current.currentTime = 0;
+    }
+
+    if (topic.hasTitleAudio) {
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://adimodtu.onrender.com/api'
+        : 'http://localhost:5757/api';
+
+      if (titleAudioRef.current) {
+        titleAudioRef.current.src = `${baseUrl}/topics/${topic._id}/title-audio`;
+        titleAudioRef.current.play().catch(err => console.error('Error playing title audio:', err));
+      }
+    } else {
+      speak(`${topic.name} konusu.`);
+    }
+  };
 
   // Başlangıç yönlendirme sesi kaldırıldı; sadece selecttopic.mp3 kullanıyoruz
 
@@ -101,7 +129,9 @@ const UserTopicsPage: React.FC = () => {
     if (topics.length > 0 && introSpeechFinished && !loading) {
       setFocusedIndex(2);
       topicRefs.current[0]?.focus();
-      speak(`${topics[0].name} konusu.`);
+      setFocusedIndex(2);
+      topicRefs.current[0]?.focus();
+      playTopicTitle(topics[0]);
     }
   }, [topics, introSpeechFinished, loading]);
 
@@ -109,14 +139,14 @@ const UserTopicsPage: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Normal topic navigation
     const totalElements = topics.length + 2; // +2 for header and back button
-    
+
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
       handleBackClick();
       return;
     }
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
@@ -130,7 +160,7 @@ const UserTopicsPage: React.FC = () => {
       }
       nextIndex = Math.min(nextIndex, totalElements - 1);
       setFocusedIndex(nextIndex);
-      
+
       if (nextIndex === 0) {
         backButtonRef.current?.focus();
       } else if (nextIndex === 1) {
@@ -138,10 +168,10 @@ const UserTopicsPage: React.FC = () => {
       } else {
         const topicIndex = nextIndex - 2;
         topicRefs.current[topicIndex]?.focus();
-        speak(`${topics[topicIndex].name} konusu.`);
+        playTopicTitle(topics[topicIndex]);
       }
     }
-    
+
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       e.stopPropagation();
@@ -149,7 +179,7 @@ const UserTopicsPage: React.FC = () => {
       // Header'ı atla
       if (prevIndex === 1) prevIndex = 0;
       setFocusedIndex(prevIndex);
-      
+
       if (prevIndex === 0) {
         backButtonRef.current?.focus();
       } else if (prevIndex === 1) {
@@ -157,10 +187,10 @@ const UserTopicsPage: React.FC = () => {
       } else {
         const topicIndex = prevIndex - 2;
         topicRefs.current[topicIndex]?.focus();
-        speak(`${topics[topicIndex].name} konusu.`);
+        playTopicTitle(topics[topicIndex]);
       }
     }
-    
+
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (focusedIndex === 0) {
@@ -197,9 +227,9 @@ const UserTopicsPage: React.FC = () => {
       ref={containerRef}
     >
       {/* Breadcrumb Navigation */}
-      <Breadcrumbs 
-        aria-label="breadcrumb" 
-        sx={{ 
+      <Breadcrumbs
+        aria-label="breadcrumb"
+        sx={{
           mb: 3,
           fontSize: '1.2rem',
           '& .MuiBreadcrumbs-ol': {
@@ -211,7 +241,7 @@ const UserTopicsPage: React.FC = () => {
           component={RouterLink}
           to="/dashboard"
           color="inherit"
-          sx={{ 
+          sx={{
             fontSize: '1.2rem',
             textDecoration: 'none',
             '&:hover': {
@@ -225,7 +255,7 @@ const UserTopicsPage: React.FC = () => {
           component={RouterLink}
           to={`/class/${classId}`}
           color="inherit"
-          sx={{ 
+          sx={{
             fontSize: '1.2rem',
             textDecoration: 'none',
             '&:hover': {
@@ -243,13 +273,15 @@ const UserTopicsPage: React.FC = () => {
         </Typography>
       </Breadcrumbs>
 
+      <audio ref={titleAudioRef} style={{ display: 'none' }} />
+
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={6}>
-        <Typography 
-          variant="h2" 
-          component="h1" 
+        <Typography
+          variant="h2"
+          component="h1"
           ref={headerRef}
           tabIndex={0}
-          sx={{ 
+          sx={{
             fontSize: '3rem',
             fontWeight: 'bold',
             color: 'primary.main',
@@ -265,13 +297,13 @@ const UserTopicsPage: React.FC = () => {
         >
           {classData?.name} - {unitData?.title} Konuları
         </Typography>
-        <Button 
-          variant="contained" 
-          color="secondary" 
-          onClick={handleBackClick} 
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleBackClick}
           ref={backButtonRef}
           tabIndex={0}
-          sx={{ 
+          sx={{
             fontSize: '1.5rem',
             padding: '1rem 2rem',
             minHeight: '60px',
@@ -288,9 +320,9 @@ const UserTopicsPage: React.FC = () => {
       </Box>
 
       {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
+        <Alert
+          severity="error"
+          sx={{
             fontSize: '1.3rem',
             padding: '1rem',
             mb: 4
@@ -301,12 +333,12 @@ const UserTopicsPage: React.FC = () => {
       )}
 
       {topics.length === 0 ? (
-        <Box 
-          display="flex" 
-          justifyContent="center" 
-          alignItems="center" 
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
           minHeight="400px"
-          sx={{ 
+          sx={{
             fontSize: '1.5rem',
             color: 'text.secondary'
           }}
@@ -318,15 +350,15 @@ const UserTopicsPage: React.FC = () => {
       ) : (
         <Grid container spacing={6}>
           {topics.map((topic, index) => (
-            <Grid size={{xs: 12}} key={topic._id}>
+            <Grid size={{ xs: 12 }} key={topic._id}>
               <Card
                 ref={(el) => {
                   topicRefs.current[index] = el;
                 }}
                 tabIndex={0}
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
+                sx={{
+                  height: '100%',
+                  display: 'flex',
                   flexDirection: 'column',
                   minHeight: '200px',
                   fontSize: '1.3rem',
@@ -343,22 +375,22 @@ const UserTopicsPage: React.FC = () => {
                     transform: 'scale(1.02)'
                   }
                 }}
-                onMouseEnter={() => speak(`${topic.name} konusu.`)}
+                onMouseEnter={() => playTopicTitle(topic)}
               >
                 <CardActionArea
                   onClick={() => handleTopicClick(topic)}
-                  sx={{ 
+                  sx={{
                     flexGrow: 1,
                     padding: '1.5rem'
                   }}
                 >
                   <CardContent sx={{ padding: '1.5rem' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography 
-                        gutterBottom 
-                        variant="h4" 
+                      <Typography
+                        gutterBottom
+                        variant="h4"
                         component="h2"
-                        sx={{ 
+                        sx={{
                           fontSize: '2rem',
                           fontWeight: 'bold',
                           mb: 0
@@ -366,11 +398,11 @@ const UserTopicsPage: React.FC = () => {
                       >
                         {topic.name}
                       </Typography>
-                      
+
                     </Box>
                     {topic.description && (
                       <Typography
-                        sx={{ 
+                        sx={{
                           fontSize: '1.2rem',
                           lineHeight: 1.6,
                           maxHeight: '4.8rem', // 3 lines * 1.6 line-height

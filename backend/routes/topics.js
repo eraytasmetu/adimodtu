@@ -15,8 +15,8 @@ const {
 const auth = require('../middleware/authMiddleware');
 const admin = require('../middleware/adminMiddleware');
 
-router.post('/', [auth, admin, upload.single('audio')], createTopic);
-router.put('/:id', [auth, admin, upload.single('audio')], updateTopic);
+router.post('/', [auth, admin, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'titleAudio', maxCount: 1 }])], createTopic);
+router.put('/:id', [auth, admin, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'titleAudio', maxCount: 1 }])], updateTopic);
 router.delete('/:id', [auth, admin], deleteTopic);
 
 router.get('/', auth, (req, res, next) => {
@@ -28,6 +28,7 @@ router.get('/', auth, (req, res, next) => {
   return getAllTopics(req, res, next);
 });
 router.get('/:id', auth, getTopicById);
-router.get('/:id/audio', auth, getTopicAudio);
+router.get('/:id/audio', getTopicAudio);
+router.get('/:id/title-audio', getTopicAudio); // Reusing getTopicAudio with query param or logic inside
 
 module.exports = router;

@@ -45,6 +45,9 @@ interface TopicData {
   hasAudio: boolean;
   audioSize?: number;
   audioFilename?: string;
+  hasTitleAudio?: boolean;
+  titleAudioSize?: number;
+  titleAudioFilename?: string;
 }
 
 interface TopicFormData {
@@ -52,6 +55,7 @@ interface TopicFormData {
   content: string;
   unit: string;
   audioFile?: File | null;
+  titleAudioFile?: File | null;
 }
 
 const AdminTopicsPage: React.FC = () => {
@@ -72,7 +76,8 @@ const AdminTopicsPage: React.FC = () => {
     title: '',
     content: '',
     unit: '',
-    audioFile: null
+    audioFile: null,
+    titleAudioFile: null
   });
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -102,7 +107,7 @@ const AdminTopicsPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim() || !formData.content.trim() || !formData.unit) {
       setError('Tüm alanları doldurun');
       return;
@@ -121,9 +126,13 @@ const AdminTopicsPage: React.FC = () => {
       formDataToSend.append('title', formData.title);
       formDataToSend.append('content', formData.content);
       formDataToSend.append('unit', formData.unit);
-      
+
       if (formData.audioFile) {
         formDataToSend.append('audio', formData.audioFile);
+      }
+
+      if (formData.titleAudioFile) {
+        formDataToSend.append('titleAudio', formData.titleAudioFile);
       }
 
       if (editingTopic) {
@@ -149,7 +158,8 @@ const AdminTopicsPage: React.FC = () => {
       }
 
       setOpenDialog(false);
-      setFormData({ title: '', content: '', unit: '', audioFile: null });
+      setOpenDialog(false);
+      setFormData({ title: '', content: '', unit: '', audioFile: null, titleAudioFile: null });
       setEditingTopic(null);
       setUploadProgress(0);
       fetchData();
@@ -165,7 +175,8 @@ const AdminTopicsPage: React.FC = () => {
       title: topic.title,
       content: topic.content,
       unit: topic.unit,
-      audioFile: null
+      audioFile: null,
+      titleAudioFile: null
     });
     setOpenDialog(true);
   };
@@ -182,7 +193,7 @@ const AdminTopicsPage: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'audioFile' | 'titleAudioFile') => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 50 * 1024 * 1024) { // 50MB limit
@@ -193,13 +204,13 @@ const AdminTopicsPage: React.FC = () => {
         setError('Sadece audio dosyaları kabul edilir');
         return;
       }
-      setFormData(prev => ({ ...prev, audioFile: file }));
+      setFormData(prev => ({ ...prev, [field]: file }));
       setError(null);
     }
   };
 
   const resetForm = () => {
-    setFormData({ title: '', content: '', unit: '', audioFile: null });
+    setFormData({ title: '', content: '', unit: '', audioFile: null, titleAudioFile: null });
     setEditingTopic(null);
     setError(null);
     setUploadProgress(0);
@@ -229,7 +240,7 @@ const AdminTopicsPage: React.FC = () => {
         >
           Admin
         </Button>
-        
+
         <Typography variant="h4" component="h1" sx={{ flexGrow: 1, fontSize: '2.5rem' }}>
           Konular
         </Typography>
@@ -280,16 +291,16 @@ const AdminTopicsPage: React.FC = () => {
       {/* Topics Grid */}
       <Grid container spacing={3}>
         {filteredTopics.map((topic) => (
-          <Grid size={{xs: 12, sm: 6, md: 4}} key={topic._id}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={topic._id}>
             <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flexGrow: 1 }}>
                 <Typography variant="h6" component="h2" sx={{ mb: 1, fontSize: '1.3rem' }}>
                   {topic.title}
                 </Typography>
-                <Typography 
-                  variant="body2" 
-                  color="text.secondary" 
-                  sx={{ 
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
                     mb: 2,
                     fontSize: '1rem',
                     lineHeight: 1.6,
@@ -299,24 +310,35 @@ const AdminTopicsPage: React.FC = () => {
                 >
                   {(topic.content || '').slice(0, 100)}{(topic.content || '').length > 100 ? '…' : ''}
                 </Typography>
-                
+
                 {/* Audio Info */}
                 {topic.hasAudio && (
-                  <Box sx={{ mb: 2 }}>
-                    <Chip 
-                      label="🎵 Audio" 
-                      color="success" 
-                      size="small" 
+                  <Box sx={{ mb: 1 }}>
+                    <Chip
+                      label="🎵 İçerik Sesi"
+                      color="success"
+                      size="small"
                       sx={{ mr: 1 }}
                     />
                     {topic.audioFilename && (
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
                         {topic.audioFilename}
                       </Typography>
                     )}
-                    {topic.audioSize && (
-                      <Typography variant="caption" display="block">
-                        {(topic.audioSize / (1024 * 1024)).toFixed(2)} MB
+                  </Box>
+                )}
+
+                {topic.hasTitleAudio && (
+                  <Box sx={{ mb: 2 }}>
+                    <Chip
+                      label="🎵 Başlık Sesi"
+                      color="info"
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    {topic.titleAudioFilename && (
+                      <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                        {topic.titleAudioFilename}
                       </Typography>
                     )}
                   </Box>
@@ -327,7 +349,7 @@ const AdminTopicsPage: React.FC = () => {
                   <strong>Ünite:</strong> {units.find(u => u._id === topic.unit)?.name || 'Bilinmiyor'}
                 </Typography>
               </CardContent>
-              
+
               <CardActions>
                 <Button
                   size="small"
@@ -357,11 +379,11 @@ const AdminTopicsPage: React.FC = () => {
         <DialogTitle sx={{ fontSize: '1.5rem' }}>
           {editingTopic ? 'Konu Düzenle' : 'Yeni Konu Ekle'}
         </DialogTitle>
-        
+
         <form onSubmit={handleSubmit}>
           <DialogContent>
             <Grid container spacing={3}>
-              <Grid size={{xs: 12}}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Konu Başlığı"
                   value={formData.title}
@@ -371,8 +393,8 @@ const AdminTopicsPage: React.FC = () => {
                   sx={{ '& .MuiInputBase-input': { fontSize: '1.1rem' } }}
                 />
               </Grid>
-              
-              <Grid size={{xs: 12}}>
+
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Konu İçeriği"
                   value={formData.content}
@@ -384,8 +406,8 @@ const AdminTopicsPage: React.FC = () => {
                   sx={{ '& .MuiInputBase-input': { fontSize: '1.1rem' } }}
                 />
               </Grid>
-              
-              <Grid size={{xs: 12}}>
+
+              <Grid size={{ xs: 12 }}>
                 <FormControl fullWidth required>
                   <InputLabel sx={{ fontSize: '1.1rem' }}>Ünite</InputLabel>
                   <Select
@@ -402,16 +424,16 @@ const AdminTopicsPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              
-              <Grid size={{xs: 12}}>
+
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Box>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontSize: '1.1rem' }}>
-                    Audio Dosyası {!editingTopic && '*'}
+                    İçerik Sesi {!editingTopic && '*'}
                   </Typography>
                   <input
                     type="file"
                     accept="audio/*"
-                    onChange={handleFileChange}
+                    onChange={(e) => handleFileChange(e, 'audioFile')}
                     style={{ display: 'none' }}
                     id="audio-file-input"
                   />
@@ -422,10 +444,10 @@ const AdminTopicsPage: React.FC = () => {
                       startIcon={<Add />}
                       sx={{ fontSize: '1rem', py: 1.5 }}
                     >
-                      {formData.audioFile ? formData.audioFile.name : 'Audio Dosyası Seç'}
+                      {formData.audioFile ? formData.audioFile.name : 'İçerik Sesi Seç'}
                     </Button>
                   </label>
-                  
+
                   {formData.audioFile && (
                     <Box sx={{ mt: 1 }}>
                       <Typography variant="body2" color="text.secondary">
@@ -436,18 +458,62 @@ const AdminTopicsPage: React.FC = () => {
                       </Typography>
                     </Box>
                   )}
-                  
+
                   {editingTopic && editingTopic.hasAudio && (
+                    <Box sx={{ mt: 1, p: 1, bgcolor: 'success.light', borderRadius: 1 }}>
+                      <Typography variant="body2" color="success.contrastText">
+                        Mevcut: {editingTopic.audioFilename || 'Bilinmiyor'}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ mb: 1, fontSize: '1.1rem' }}>
+                    Başlık Sesi (Opsiyonel)
+                  </Typography>
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => handleFileChange(e, 'titleAudioFile')}
+                    style={{ display: 'none' }}
+                    id="title-audio-file-input"
+                  />
+                  <label htmlFor="title-audio-file-input">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<Add />}
+                      sx={{ fontSize: '1rem', py: 1.5 }}
+                    >
+                      {formData.titleAudioFile ? formData.titleAudioFile.name : 'Başlık Sesi Seç'}
+                    </Button>
+                  </label>
+
+                  {formData.titleAudioFile && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Seçilen dosya: {formData.titleAudioFile.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Boyut: {(formData.titleAudioFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {editingTopic && editingTopic.hasTitleAudio && (
                     <Box sx={{ mt: 1, p: 1, bgcolor: 'info.light', borderRadius: 1 }}>
                       <Typography variant="body2" color="info.contrastText">
-                        Mevcut audio: {editingTopic.audioFilename || 'Bilinmiyor'}
+                        Mevcut: {editingTopic.titleAudioFilename || 'Bilinmiyor'}
                       </Typography>
                     </Box>
                   )}
                 </Box>
               </Grid>
             </Grid>
-            
+
             {/* Upload Progress */}
             {uploadProgress > 0 && uploadProgress < 100 && (
               <Box sx={{ mt: 2 }}>
@@ -458,7 +524,7 @@ const AdminTopicsPage: React.FC = () => {
               </Box>
             )}
           </DialogContent>
-          
+
           <DialogActions sx={{ p: 3 }}>
             <Button
               onClick={() => {

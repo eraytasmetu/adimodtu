@@ -38,6 +38,7 @@ interface TopicData {
     size: number;
   };
   unit: string;
+  hasTitleAudio?: boolean;
 }
 
 interface ClassData {
@@ -83,6 +84,8 @@ const TopicDetailPage: React.FC = () => {
   // Audio URLs and current index
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
   const [currentAudioUrlIndex, setCurrentAudioUrlIndex] = useState<number>(0);
+  const [titleAudioUrl, setTitleAudioUrl] = useState<string | null>(null);
+  const titleAudioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -130,9 +133,16 @@ const TopicDetailPage: React.FC = () => {
       const baseUrl = process.env.NODE_ENV === 'production'
         ? 'https://adimodtu.onrender.com/api'
         : 'http://localhost:5757/api';
+
       const audioUrl = `${baseUrl}/topics/${topic._id}/audio`;
       setAudioUrls([audioUrl]);
       setCurrentAudioUrlIndex(0);
+
+      // Set title audio URL if available
+      if (topic.hasTitleAudio) {
+        const tAudioUrl = `${baseUrl}/topics/${topic._id}/title-audio`;
+        setTitleAudioUrl(tAudioUrl);
+      }
 
       // Load audio
       if (audioUrl) {
@@ -140,6 +150,31 @@ const TopicDetailPage: React.FC = () => {
       }
     }
   }, [topic]);
+
+  // Play title audio when it's ready and topic is loaded
+  useEffect(() => {
+    if (titleAudioUrl && titleAudioRef.current) {
+      const playTitleAudio = async () => {
+        try {
+          titleAudioRef.current!.src = titleAudioUrl;
+          await titleAudioRef.current!.play();
+        } catch (err) {
+          console.error('Error playing title audio:', err);
+        }
+      };
+      playTitleAudio();
+    } else if (topic && !topic.hasTitleAudio) {
+      // Fallback to TTS if no title audio (optional, based on user request "yerine onu da yükleyelim")
+      // The user said "seslendiriciye okutmak yerine", so we should ONLY play if uploaded.
+      // If not uploaded, maybe we should still use TTS? 
+      // "konular için seslendiriciye okutmak yerine onu da yükleyelim konu ismi okunsun"
+      // This implies replacing TTS with uploaded audio.
+      // If I don't have uploaded audio, I might want to keep TTS or do nothing.
+      // For now, I'll assume if no audio, do nothing or let existing logic handle it.
+      // But I don't see existing TTS logic active here.
+      // I'll just add the title audio player.
+    }
+  }, [titleAudioUrl, topic]);
 
   // Audio event handlers
   const handlePlayPause = () => {
@@ -403,6 +438,11 @@ const TopicDetailPage: React.FC = () => {
             ref={audioRef}
             src={audioUrls[currentAudioUrlIndex] || ''}
             preload="metadata"
+            style={{ display: 'none' }}
+          />
+          <audio
+            ref={titleAudioRef}
+            preload="auto"
             style={{ display: 'none' }}
           />
 
